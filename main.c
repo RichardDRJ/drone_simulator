@@ -3,8 +3,8 @@
 
 /* Standard includes */
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
-//#include <strings.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -17,9 +17,15 @@
 
 uint8_t done = 0;
 
+void error(char *msg)
+{
+    fprintf(stderr, "%s\n", msg);
+    exit(1);
+}
+
 void ftp_listen(void)
 {
-    char buffer[256];
+    char buffer[6];
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
     socklen_t clilen = sizeof(cli_addr);
@@ -31,30 +37,43 @@ void ftp_listen(void)
     serv_addr.sin_port = htons(FTP_LISTEN_SOCK);
 
     if (bind(server_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
-        printf("ERROR on binding\n");
+        error("ERROR on binding");
     listen(server_sockfd, 5);
 
     int client_sockfd = accept(server_sockfd, (struct sockaddr *) &cli_addr, &clilen);
     if(client_sockfd < 0)
-        printf("ERROR on accept\n");
+        error("ERROR on accept");
+
+    int bytes_written = write(client_sockfd,MSG_OPERATION_OK,strlen(MSG_OPERATION_OK));
+    if (bytes_written < 0)
+        error("ERROR writing to socket");
+
+
+    char current_char;
+
+    bzero(buffer,6);
+//    char *curr_buffer_loc = &buffer[0];
 
     while(!done)
     {
-        bzero(buffer,256);
+        printf("Reading\n");
+        int8_t bytes_read = recv(client_sockfd, buffer, 1, 0);
+        printf("Read: %c\n", buffer[0]);
 
-        /*  Right now this will receive null if there isn't a new packet waiting but if we make it wait, it waits for 255 characters. */
-        if (recv(client_sockfd, buffer, 255, MSG_DONTWAIT) < 0)
+        if(bytes_read < 1)
         {
-            if(!(errno & (EAGAIN | EWOULDBLOCK)))
-            {
-                printf("ERROR reading from socket\n");
-                return;
-            }
+            error("ERROR reading from socket");
+            return;
         }
 
-        int bytes_written = write(client_sockfd,MSG_OPERATION_OK,strlen(MSG_OPERATION_OK));
-        if (bytes_written < 0)
-            printf("ERROR writing to socket\n");
+/*        printf("Reading\n");
+        int bytes_read = recv(client_sockfd, buffer, 255, 0);
+        printf("Read %s\n", buffer);
+        if(bytes_read < 0)
+                printf("ERROR reading from socket\n");
+*/
+
+        /*  TODO: Search trie for FTP commands with a handler function for each. If there is no handler function, do nothing. If the sent code is invalid, close connection. */
     }
 
     close(client_sockfd);
@@ -77,24 +96,24 @@ int main(int argc, char *argv)
     serv_addr.sin_port = htons(AUTH_SOCK);
 
     if (bind(server_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
-        printf("ERROR on binding\n");
+        error("ERROR on binding\n");
     listen(server_sockfd, 5);
 
     clilen = sizeof(cli_addr);
     int client_sockfd = accept(server_sockfd, (struct sockaddr *) &cli_addr, &clilen);
     if(client_sockfd < 0)
-        printf("ERROR on accept\n");
+        error("ERROR on accept\n");
 
     bzero(buffer,256);
 
     int bytes_written = read(client_sockfd,buffer,255);
     if (bytes_written < 0)
-        printf("ERROR reading from socket\n");
+        error("ERROR reading from socket\n");
     printf("Here is the message: %s\n",buffer);
 
     bytes_written = write(client_sockfd,"I got your message",18);
     if (bytes_written < 0)
-        printf("ERROR writing to socket\n");
+        error("ERROR writing to socket\n");
 
     close(client_sockfd);
     close(server_sockfd);
