@@ -7,7 +7,7 @@ struct trie *init_trie(void)
     return calloc(sizeof(struct trie), 1);
 }
 
-void insert_to_trie(struct trie *t, char *c, void (*handler)(int))
+void insert_to_trie(struct trie *t, char *c, void (*handler)(struct session_data*))
 {
     struct trie_node *n = t->root;
     char *key = c;

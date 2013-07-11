@@ -6,6 +6,9 @@
 #define MSG_UNSUPPORTED "202 command unsupported\r\n"
 #define MSG_LOGIN_SUCCESS "230 login successful\r\n"
 #define MSG_PASSIVE_SUCCESS "227 PASV ok"
+#define MSG_RETR_SUCCESS "226 operation successful\r\n"
 #define MSG_TELL_SIZE  "213"
+#define MSG_OPENING_BINARY_CONN "150 opening binary connection\r\n"
+#define MSG_QUIT_SUCCESS "221 quit successful\r\n"
 
 #endif

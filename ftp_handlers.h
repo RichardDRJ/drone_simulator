@@ -1,11 +1,16 @@
 #ifndef FTP_HANDLERS_H
 #define FTP_HANDLERS_H
 
-void user_handler(int);
-void port_handler(int);
-void pasv_handler(int);
-void size_handler(int);
+#include "ftp_server.h"
 
-void empty_handler(int);
+void user_handler(struct session_data*);
+void port_handler(struct session_data*);
+void pasv_handler(struct session_data*);
+void size_handler(struct session_data*);
+void type_handler(struct session_data*);
+void retr_handler(struct session_data*);
+void quit_handler(struct session_data*);
+
+void empty_handler(struct session_data*);
 
 #endif

@@ -11,14 +11,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <pthread.h>
 
 /* Networking includes */
 #include <sys/socket.h>
 #include <netinet/in.h>
 
 static struct trie ftp_command_trie;
-extern struct sockaddr_in data_sock;
-extern int data_sockfd;
 
 void create_ftp_command_trie(void)
 {
@@ -32,17 +31,17 @@ void create_ftp_command_trie(void)
     insert_to_trie(&ftp_command_trie, "CDUP", &empty_handler);
     insert_to_trie(&ftp_command_trie, "SMNT", &empty_handler);
     insert_to_trie(&ftp_command_trie, "REIN", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "QUIT", &empty_handler);
+    insert_to_trie(&ftp_command_trie, "QUIT", &quit_handler);
 
     /* Transfer parameter commands */
     insert_to_trie(&ftp_command_trie, "PORT", &empty_handler);
     insert_to_trie(&ftp_command_trie, "PASV", &pasv_handler);
-    insert_to_trie(&ftp_command_trie, "TYPE", &empty_handler);
+    insert_to_trie(&ftp_command_trie, "TYPE", &type_handler);
     insert_to_trie(&ftp_command_trie, "STRU", &empty_handler);
     insert_to_trie(&ftp_command_trie, "MODE", &empty_handler);
 
     /* FTP service commands */
-    insert_to_trie(&ftp_command_trie, "RETR", &empty_handler);
+    insert_to_trie(&ftp_command_trie, "RETR", &retr_handler);
     insert_to_trie(&ftp_command_trie, "STOR", &empty_handler);
     insert_to_trie(&ftp_command_trie, "ATOU", &empty_handler);
     insert_to_trie(&ftp_command_trie, "APPE", &empty_handler);
@@ -72,10 +71,7 @@ void create_ftp_command_trie(void)
 
 void ftp_listen(void)
 {
-    data_sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    data_sock.sin_port = htons(20);
 
-//    char buffer[6];
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
     socklen_t clilen = sizeof(cli_addr);
@@ -100,14 +96,24 @@ void ftp_listen(void)
 
     char current_char;
 
-//    bzero(buffer,6);
-//    char *curr_buffer_loc = &buffer[0];
+    struct session_data session_data = {
+        .type = 'A',
+        .client_sockfd = client_sockfd,
+        .server_sockfd = server_sockfd,
+        .retr_mutex = PTHREAD_MUTEX_INITIALIZER,
+        .data_sock = {  .sin_family = AF_INET,
+                        .sin_addr = {.s_addr = INADDR_ANY},
+                        .sin_port = htons(20)},
+        .data_sockfd = socket(AF_INET, SOCK_STREAM, 0),
+        .done = 0,
+    };
 
-    uint8_t done = 0;
     struct trie_node *n = ftp_command_trie.root;
     uint8_t cr = 0;
 
-    while(!done)
+    pthread_mutex_lock(&session_data.retr_mutex);
+
+    while(!session_data.done)
     {
         int8_t bytes_read = recv(client_sockfd, &current_char, 1, 0);
 
@@ -116,8 +122,6 @@ void ftp_listen(void)
             error("ERROR reading from socket");
             return;
         }
-
-        //printf("char: %c\n", current_char);
 
         if(current_char == '\r')
         {
@@ -137,20 +141,51 @@ void ftp_listen(void)
         else if(n->handler)
         {
             printf("Command: %s\n", n->key);
-            n->handler(client_sockfd);
+            n->handler(&session_data);
             n = ftp_command_trie.root;
         }
-
-/*        printf("Reading\n");
-        int bytes_read = recv(client_sockfd, buffer, 255, 0);
-        printf("Read %s\n", buffer);
-        if(bytes_read < 0)
-                printf("ERROR reading from socket\n");
-*/
-
-        /*  TODO: Search trie for FTP commands with a handler function for each. If there is no handler function, do nothing. If the sent code is invalid, close connection. */
     }
 
-    close(client_sockfd);
-    close(server_sockfd);
+    close(session_data.client_sockfd);
+    close(session_data.server_sockfd);
+}
+
+void *ftp_data_listen(void *args)
+{
+    struct session_data *d = (struct session_data*)args;
+    pthread_mutex_lock(&d->retr_mutex);
+
+    int bytes_written = write(d->client_sockfd,MSG_OPENING_BINARY_CONN, sizeof(MSG_OPENING_BINARY_CONN));
+    if (bytes_written < 0)
+        error("ERROR writing to socket");
+
+    struct sockaddr_in cli_addr;
+    socklen_t clilen = sizeof(cli_addr);
+
+    int data_client_sockfd = accept(d->data_sockfd, (struct sockaddr *) &cli_addr, &clilen);
+    if(data_client_sockfd < 0)
+        error("ERROR on data accept");
+
+    FILE *f = fopen(d->filename, "rb");
+
+    fseek (f , 0 , SEEK_END);
+    size_t size = ftell (f);
+    rewind (f);
+
+    char *buffer = malloc(size);
+
+    fread(buffer, 1, size, f);
+
+    fclose(f);
+
+    bytes_written = send(data_client_sockfd, buffer, size, 0);
+    if (bytes_written < 0)
+        error("ERROR writing to socket");
+
+    free(buffer);
+
+    close(data_client_sockfd);
+//    close(d->data_sockfd);
+
+    pthread_mutex_unlock(&d->retr_mutex);
 }

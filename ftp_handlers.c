@@ -1,5 +1,6 @@
 /* User includes */
 #include "ftp_handlers.h"
+#include "ftp_server.h"
 #include "ftp_messages.h"
 #include "error.h"
 
@@ -9,18 +10,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <pthread.h>
 
 /* Networking includes */
 
 #include <sys/socket.h>
 #include <netinet/in.h>
-
-static char type = 'A';
-static char *current_user = NULL;
-struct sockaddr_in data_sock
-    = {.sin_family = AF_INET,
-    .sin_addr = {.s_addr = INADDR_ANY}};
-int data_sockfd;
 
 char *read_args(int sockfd)
 {
@@ -74,9 +69,9 @@ char *read_args(int sockfd)
     return args_buffer;
 }
 
-void size_handler(int sockfd)
+void size_handler(struct session_data *d)
 {
-    char *args = read_args(sockfd);
+    char *args = read_args(d->client_sockfd);
     char *tokeniser_saveptr;
 
     /*  TODO: Deal with escaped spaces. */
@@ -93,41 +88,86 @@ void size_handler(int sockfd)
 
     message_size = snprintf(ret_message, message_size, MSG_TELL_SIZE " %d\r\n", sz);
 
-    write(sockfd, ret_message, message_size);
+    write(d->client_sockfd, ret_message, message_size);
 }
 
-void user_handler(int sockfd)
+void type_handler(struct session_data *d)
 {
-    char *args = read_args(sockfd);
+    char *args = read_args(d->client_sockfd);
+    char *tokeniser_saveptr;
+
+    char *newtype = strtok_r(args, "\r\n ", &tokeniser_saveptr);
+    d->type = *newtype;
+
+    size_t message_size = sizeof(MSG_OPERATION_SUCCESS);
+
+    write(d->client_sockfd, MSG_OPERATION_SUCCESS, message_size);
+}
+
+void user_handler(struct session_data *d)
+{
+    char *args = read_args(d->client_sockfd);
     char *tokeniser_saveptr;
 
     char *uname = strtok_r(args, "\r\n ", &tokeniser_saveptr);
 
     if(!uname || !strcmp(uname, "anonymous"))
     {
-        current_user = "anonymous";
-        write(sockfd, MSG_LOGIN_SUCCESS, sizeof(MSG_LOGIN_SUCCESS));
+        d->current_username = "anonymous";
+        write(d->client_sockfd, MSG_LOGIN_SUCCESS, sizeof(MSG_LOGIN_SUCCESS));
     }
 }
 
-void port_handler(int);
-void pasv_handler(int sockfd)
+void pasv_handler(struct session_data *d)
 {
     char ret_message[sizeof(MSG_PASSIVE_SUCCESS) + 29];
 
-    data_sock.sin_port = 0;
+    d->data_sock.sin_port = 0;
 
-    if (bind(data_sockfd, (struct sockaddr *)&data_sock, sizeof(data_sock)) < 0) 
+    if (bind(d->data_sockfd, (struct sockaddr *)&d->data_sock, sizeof(d->data_sock)) < 0) 
         error("ERROR on PASV binding");
 
-    snprintf(ret_message, sizeof(MSG_PASSIVE_SUCCESS) + 29, MSG_PASSIVE_SUCCESS " (%d,%d,%d,%d,%d,%d)\r\n", 192, 168, 1, 1, 255 & (data_sock.sin_port >> 8), 255 & data_sock.sin_port);
+    listen(d->data_sockfd, 5);
+
+    socklen_t len = sizeof(d->data_sock);
+    if (getsockname(d->data_sockfd, (struct sockaddr *)&d->data_sock, &len) == -1)
+        error("getsockname");
+    
+    pthread_create(&d->data_thread, NULL, ftp_data_listen, d);
+
+    snprintf(ret_message, sizeof(MSG_PASSIVE_SUCCESS) + 29, MSG_PASSIVE_SUCCESS " (%d,%d,%d,%d,%d,%d)\r\n", 192, 168, 1, 1, 255 & d->data_sock.sin_port, 255 & (d->data_sock.sin_port >> 8));
 
     printf("%s\n", ret_message);
 
-    write(sockfd, ret_message, strlen(ret_message));
+    write(d->client_sockfd, ret_message, strlen(ret_message));
 }
 
-void empty_handler(int sockfd)
+void quit_handler(struct session_data *d)
 {
-    write(sockfd, MSG_UNSUPPORTED, strlen(MSG_UNSUPPORTED));
+    close(d->client_sockfd);
+    close(d->server_sockfd);
+    write(d->client_sockfd, MSG_QUIT_SUCCESS, strlen(MSG_QUIT_SUCCESS));
+    d->done = 1;
+}
+
+void empty_handler(struct session_data *d)
+{
+    write(d->client_sockfd, MSG_UNSUPPORTED, strlen(MSG_UNSUPPORTED));
+}
+
+void retr_handler(struct session_data *d)
+{
+    char *args = read_args(d->client_sockfd);
+    char *tokeniser_saveptr;
+
+    d->filename = strtok_r(args, "\r\n ", &tokeniser_saveptr);
+    pthread_mutex_unlock(&d->retr_mutex);
+
+    pthread_join(d->data_thread, NULL);
+
+    printf("write(%d, %s, %d)\n", d->client_sockfd, MSG_RETR_SUCCESS, sizeof(MSG_RETR_SUCCESS) - 1);
+
+    int bytes_written = write(d->client_sockfd, MSG_RETR_SUCCESS, sizeof(MSG_RETR_SUCCESS));
+    if (bytes_written < 0)
+        error("ERROR writing to socket");
 }
