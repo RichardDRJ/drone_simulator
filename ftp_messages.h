@@ -6,5 +6,6 @@
 #define MSG_UNSUPPORTED "202 command unsupported\r\n"
 #define MSG_LOGIN_SUCCESS "230 login successful\r\n"
 #define MSG_PASSIVE_SUCCESS "227 PASV ok"
+#define MSG_TELL_SIZE  "213"
 
 #endif

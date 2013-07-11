@@ -117,7 +117,7 @@ void ftp_listen(void)
             return;
         }
 
-        printf("char: %c\n", current_char);
+        //printf("char: %c\n", current_char);
 
         if(current_char == '\r')
         {

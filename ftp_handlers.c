@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+static char type = 'A';
 static char *current_user = NULL;
 struct sockaddr_in data_sock
     = {.sin_family = AF_INET,
@@ -46,6 +47,7 @@ char *read_args(int sockfd)
             else if(args_buffer[index] == '\r')
             {
                 cr = 1;
+                ++index;
                 continue;
             }
 
@@ -67,45 +69,41 @@ char *read_args(int sockfd)
         break;
     }
 
+    printf("final args_buffer: %s\n", args_buffer);
+
     return args_buffer;
 }
 
 void size_handler(int sockfd)
 {
+    char *args = read_args(sockfd);
+    char *tokeniser_saveptr;
 
+    /*  TODO: Deal with escaped spaces. */
+    char *filename = strtok_r(args, "\r\n ", &tokeniser_saveptr);
+
+    FILE *file = fopen(filename, "rb");
+    fseek(file, 0L, SEEK_END);
+    size_t sz = ftell(file);
+    fclose(file);
+
+    size_t message_size = sizeof(MSG_TELL_SIZE) + 10;
+    char ret_message[message_size];
+    bzero(ret_message, message_size);
+
+    message_size = snprintf(ret_message, message_size, MSG_TELL_SIZE " %d\r\n", sz);
+
+    write(sockfd, ret_message, message_size);
 }
 
 void user_handler(int sockfd)
 {
-    char uname_buffer[256];
-    bzero(uname_buffer, 256);
-    uint8_t done = 0;
-    int16_t index = -1;
-    uint8_t cr = 0;
+    char *args = read_args(sockfd);
+    char *tokeniser_saveptr;
 
-    while(++index < 255)
-    {
-        int8_t bytes_read = recv(sockfd, &uname_buffer[index], 1, 0);
+    char *uname = strtok_r(args, "\r\n ", &tokeniser_saveptr);
 
-        if(bytes_read < 1)
-            error("ERROR reading from socket");
-        else if(uname_buffer[index] == ' ')
-            index = -1;
-        else if(cr && uname_buffer[index] == '\n')
-        {
-            uname_buffer[index - 1] = 0;
-            break;
-        }
-        else if(uname_buffer[index] == '\r')
-        {
-            cr = 1;
-            continue;
-        }
-
-        cr = 0;
-    }
-
-    if(!strcmp(uname_buffer, "anonymous") || uname_buffer[0] == 0)
+    if(!uname || !strcmp(uname, "anonymous"))
     {
         current_user = "anonymous";
         write(sockfd, MSG_LOGIN_SUCCESS, sizeof(MSG_LOGIN_SUCCESS));
