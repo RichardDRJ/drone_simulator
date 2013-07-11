@@ -153,11 +153,6 @@ void ftp_listen(void)
 void *ftp_data_listen(void *args)
 {
     struct session_data *d = (struct session_data*)args;
-    pthread_mutex_lock(&d->retr_mutex);
-
-    int bytes_written = write(d->client_sockfd,MSG_OPENING_BINARY_CONN, sizeof(MSG_OPENING_BINARY_CONN));
-    if (bytes_written < 0)
-        error("ERROR writing to socket");
 
     struct sockaddr_in cli_addr;
     socklen_t clilen = sizeof(cli_addr);
@@ -165,6 +160,8 @@ void *ftp_data_listen(void *args)
     int data_client_sockfd = accept(d->data_sockfd, (struct sockaddr *) &cli_addr, &clilen);
     if(data_client_sockfd < 0)
         error("ERROR on data accept");
+
+    pthread_mutex_lock(&d->retr_mutex);
 
     FILE *f = fopen(d->filename, "rb");
 
@@ -178,6 +175,10 @@ void *ftp_data_listen(void *args)
 
     fclose(f);
 
+    int bytes_written = write(d->client_sockfd,MSG_OPENING_BINARY_CONN, strlen(MSG_OPENING_BINARY_CONN));
+    if (bytes_written < 0)
+        error("ERROR writing to socket");
+
     bytes_written = send(data_client_sockfd, buffer, size, 0);
     if (bytes_written < 0)
         error("ERROR writing to socket");
@@ -185,7 +186,6 @@ void *ftp_data_listen(void *args)
     free(buffer);
 
     close(data_client_sockfd);
-//    close(d->data_sockfd);
 
     pthread_mutex_unlock(&d->retr_mutex);
 }

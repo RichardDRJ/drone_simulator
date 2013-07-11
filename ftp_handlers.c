@@ -99,7 +99,7 @@ void type_handler(struct session_data *d)
     char *newtype = strtok_r(args, "\r\n ", &tokeniser_saveptr);
     d->type = *newtype;
 
-    size_t message_size = sizeof(MSG_OPERATION_SUCCESS);
+    size_t message_size = strlen(MSG_OPERATION_SUCCESS);
 
     write(d->client_sockfd, MSG_OPERATION_SUCCESS, message_size);
 }
@@ -114,7 +114,7 @@ void user_handler(struct session_data *d)
     if(!uname || !strcmp(uname, "anonymous"))
     {
         d->current_username = "anonymous";
-        write(d->client_sockfd, MSG_LOGIN_SUCCESS, sizeof(MSG_LOGIN_SUCCESS));
+        write(d->client_sockfd, MSG_LOGIN_SUCCESS, strlen(MSG_LOGIN_SUCCESS));
     }
 }
 
@@ -161,13 +161,19 @@ void retr_handler(struct session_data *d)
     char *tokeniser_saveptr;
 
     d->filename = strtok_r(args, "\r\n ", &tokeniser_saveptr);
+
     pthread_mutex_unlock(&d->retr_mutex);
 
     pthread_join(d->data_thread, NULL);
 
-    printf("write(%d, %s, %d)\n", d->client_sockfd, MSG_RETR_SUCCESS, sizeof(MSG_RETR_SUCCESS) - 1);
+    struct sockaddr_in client_sock;
+    socklen_t len = sizeof(client_sock);
+    if (getsockname(d->client_sockfd, (struct sockaddr *)&client_sock, &len) == -1)
+        error("getsockname");
 
-    int bytes_written = write(d->client_sockfd, MSG_RETR_SUCCESS, sizeof(MSG_RETR_SUCCESS));
+    printf("client_sock port: %d\n", ntohs(client_sock.sin_port));
+
+    int bytes_written = write(d->client_sockfd, MSG_RETR_SUCCESS, strlen(MSG_RETR_SUCCESS));
     if (bytes_written < 0)
         error("ERROR writing to socket");
 }
