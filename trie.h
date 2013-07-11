@@ -18,6 +18,6 @@ struct trie_node
 
 struct trie *init_trie(void);
 void insert_to_trie(struct trie *t, char *c, void (*handler)(int));
-struct trie_node *traverse_to_char(char c, struct trie_node *n);
+struct trie_node *traverse_to_child_char(char c, struct trie_node *n);
 
 #endif

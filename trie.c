@@ -1,5 +1,6 @@
 #include "trie.h"
 #include <stdlib.h>
+#include <stdio.h>
 
 struct trie *init_trie(void)
 {
@@ -15,18 +16,15 @@ void insert_to_trie(struct trie *t, char *c, void (*handler)(int))
     {
         n = calloc(sizeof(struct trie_node), 1);
         t->root = n;
-        n->c = *c;
-        n->handler = handler;
-        ++c;
     }
 
     while(*c)
     {
         if(n->c == '\0')
         {
-            n->handler = handler;
             n->c = *c++;
-            n->key = key;
+            n->centre = calloc(sizeof(struct trie_node), 1);
+            n = n->centre;
         }
         else if(*c > n->c)
         {
@@ -45,11 +43,15 @@ void insert_to_trie(struct trie *t, char *c, void (*handler)(int))
             if(!n->centre)
                 n->centre = calloc(sizeof(struct trie_node), 1);
             n = n->centre;
+            ++c;
         }
     }
+
+    n->handler = handler;
+    n->key = key;
 }
 
-struct trie_node *traverse_to_char(char c, struct trie_node *n)
+struct trie_node *traverse_to_child_char(char c, struct trie_node *n)
 {
     while(n)
     {
@@ -61,5 +63,7 @@ struct trie_node *traverse_to_char(char c, struct trie_node *n)
             break;
     }
 
-    return n;
+    if(n)
+        return n->centre;
+    return 0;
 }

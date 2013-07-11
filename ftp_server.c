@@ -17,6 +17,8 @@
 #include <netinet/in.h>
 
 static struct trie ftp_command_trie;
+extern struct sockaddr_in data_sock;
+extern int data_sockfd;
 
 void create_ftp_command_trie(void)
 {
@@ -34,7 +36,7 @@ void create_ftp_command_trie(void)
 
     /* Transfer parameter commands */
     insert_to_trie(&ftp_command_trie, "PORT", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "PASV", &empty_handler);
+    insert_to_trie(&ftp_command_trie, "PASV", &pasv_handler);
     insert_to_trie(&ftp_command_trie, "TYPE", &empty_handler);
     insert_to_trie(&ftp_command_trie, "STRU", &empty_handler);
     insert_to_trie(&ftp_command_trie, "MODE", &empty_handler);
@@ -60,11 +62,20 @@ void create_ftp_command_trie(void)
     insert_to_trie(&ftp_command_trie, "STAT", &empty_handler);
     insert_to_trie(&ftp_command_trie, "HELP", &empty_handler);
     insert_to_trie(&ftp_command_trie, "NOOP", &empty_handler);
+
+    /* FTP extensions */
+    insert_to_trie(&ftp_command_trie, "SIZE", &size_handler);
+    insert_to_trie(&ftp_command_trie, "MTDM", &empty_handler);
+    insert_to_trie(&ftp_command_trie, "MLST", &empty_handler);
+    insert_to_trie(&ftp_command_trie, "MLSD", &empty_handler);
 }
 
 void ftp_listen(void)
 {
-    char buffer[6];
+    data_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    data_sock.sin_port = htons(20);
+
+//    char buffer[6];
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
     socklen_t clilen = sizeof(cli_addr);
@@ -89,15 +100,16 @@ void ftp_listen(void)
 
     char current_char;
 
-    bzero(buffer,6);
+//    bzero(buffer,6);
 //    char *curr_buffer_loc = &buffer[0];
 
     uint8_t done = 0;
     struct trie_node *n = ftp_command_trie.root;
+    uint8_t cr = 0;
 
     while(!done)
     {
-        int8_t bytes_read = recv(client_sockfd, buffer, 1, 0);
+        int8_t bytes_read = recv(client_sockfd, &current_char, 1, 0);
 
         if(bytes_read < 1)
         {
@@ -105,12 +117,29 @@ void ftp_listen(void)
             return;
         }
 
-        n = traverse_to_char(buffer[0], n);
+        printf("char: %c\n", current_char);
+
+        if(current_char == '\r')
+        {
+            cr = 1;
+            continue;
+        }
+        else if(cr && current_char == '\n')
+        {
+            n = ftp_command_trie.root;
+            continue;
+        }
+
+        n = traverse_to_child_char(current_char, n);
 
         if(!n)
             n = ftp_command_trie.root;
         else if(n->handler)
+        {
+            printf("Command: %s\n", n->key);
             n->handler(client_sockfd);
+            n = ftp_command_trie.root;
+        }
 
 /*        printf("Reading\n");
         int bytes_read = recv(client_sockfd, buffer, 255, 0);

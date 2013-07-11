@@ -4,6 +4,7 @@
 void user_handler(int);
 void port_handler(int);
 void pasv_handler(int);
+void size_handler(int);
 
 void empty_handler(int);
 
