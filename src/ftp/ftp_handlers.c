@@ -77,17 +77,26 @@ void size_handler(struct session_data *d)
     char *filename = strtok_r(args, "\r\n ", &tokeniser_saveptr);
 
     FILE *file = fopen(filename, "rb");
-    fseek(file, 0L, SEEK_END);
-    size_t sz = ftell(file);
-    fclose(file);
 
-    size_t message_size = sizeof(MSG_TELL_SIZE) + 10;
-    char ret_message[message_size];
-    bzero(ret_message, message_size);
+    if(!file)
+    {
+        size_t message_size = strlen(MSG_NO_SUCH_FILE);
+        write(d->client_sockfd, MSG_NO_SUCH_FILE, message_size);
+    }
+    else
+    {
+        fseek(file, 0L, SEEK_END);
+        size_t sz = ftell(file);
+        fclose(file);
 
-    message_size = snprintf(ret_message, message_size, MSG_TELL_SIZE " %zu\r\n", sz);
+        size_t message_size = sizeof(MSG_TELL_SIZE) + 10;
+        char ret_message[message_size];
+        bzero(ret_message, message_size);
 
-    write(d->client_sockfd, ret_message, message_size);
+        message_size = snprintf(ret_message, message_size, MSG_TELL_SIZE " %zu\r\n", sz);
+
+        write(d->client_sockfd, ret_message, message_size);
+    }
 }
 
 void type_handler(struct session_data *d)
@@ -131,7 +140,7 @@ void pasv_handler(struct session_data *d)
     socklen_t len = sizeof(d->data_sock);
     if (getsockname(d->data_sockfd, (struct sockaddr *)&d->data_sock, &len) == -1)
         error("getsockname");
-    
+
     pthread_create(&d->data_thread, NULL, ftp_data_listen, d);
 
     snprintf(ret_message, sizeof(MSG_PASSIVE_SUCCESS) + 29, MSG_PASSIVE_SUCCESS " (%d,%d,%d,%d,%d,%d)\r\n", 192, 168, 1, 1, 255 & d->data_sock.sin_port, 255 & (d->data_sock.sin_port >> 8));

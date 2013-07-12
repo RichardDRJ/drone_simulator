@@ -18,5 +18,5 @@ uint8_t done = 0;
 int main(int argc, char **argv)
 {
     create_ftp_command_trie();
-    ftp_listen();
+    ftp_listen(FTP_LISTEN_SOCK);
 }

@@ -69,8 +69,16 @@ void create_ftp_command_trie(void)
     insert_to_trie(&ftp_command_trie, "MLSD", &empty_handler);
 }
 
-void ftp_listen(void)
+void ftp_listen(int listen_socket)
 {
+    struct session_data td = {.type = 'A',
+        .retr_mutex = PTHREAD_MUTEX_INITIALIZER,
+        .data_sock = {  .sin_family = AF_INET,
+            .sin_addr = {.s_addr = INADDR_ANY},
+            .sin_port = htons(20)},
+        .data_sockfd = socket(AF_INET, SOCK_STREAM, 0),
+        .done = 0,
+    };
 
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
@@ -80,47 +88,52 @@ void ftp_listen(void)
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(FTP_LISTEN_SOCK);
+    serv_addr.sin_port = htons(listen_socket);
 
     if (bind(server_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
         error("ERROR on binding");
+
     listen(server_sockfd, 5);
 
-    int client_sockfd = accept(server_sockfd, (struct sockaddr *) &cli_addr, &clilen);
-    if(client_sockfd < 0)
-        error("ERROR on accept");
+    while(1)
+    {
+        int client_sockfd = accept(server_sockfd, (struct sockaddr *) &cli_addr, &clilen);
+        if(client_sockfd < 0)
+            error("ERROR on accept");
 
-    int bytes_written = write(client_sockfd,MSG_OPERATION_SUCCESS,strlen(MSG_OPERATION_SUCCESS));
-    if (bytes_written < 0)
-        error("ERROR writing to socket");
+        int bytes_written = write(client_sockfd,MSG_OPERATION_SUCCESS,strlen(MSG_OPERATION_SUCCESS));
+        if (bytes_written < 0)
+            error("ERROR writing to socket");
 
-    char current_char;
+        td.client_sockfd = client_sockfd;
+        td.server_sockfd = server_sockfd;
 
-    struct session_data session_data = {
-        .type = 'A',
-        .client_sockfd = client_sockfd,
-        .server_sockfd = server_sockfd,
-        .retr_mutex = PTHREAD_MUTEX_INITIALIZER,
-        .data_sock = {  .sin_family = AF_INET,
-                        .sin_addr = {.s_addr = INADDR_ANY},
-                        .sin_port = htons(20)},
-        .data_sockfd = socket(AF_INET, SOCK_STREAM, 0),
-        .done = 0,
-    };
+        struct session_data *session_data = malloc(sizeof(struct session_data));
+        *session_data = td;
+
+        pthread_t session_thread;
+        pthread_create(&session_thread, NULL, ftp_session, session_data);
+    }
+}
+
+void *ftp_session(void *args)
+{
+    struct session_data *session_data = (struct session_data*)args;
 
     struct trie_node *n = ftp_command_trie.root;
     uint8_t cr = 0;
+    char current_char;
 
-    pthread_mutex_lock(&session_data.retr_mutex);
+    pthread_mutex_lock(&session_data->retr_mutex);
 
-    while(!session_data.done)
+    while(!session_data->done)
     {
-        int8_t bytes_read = recv(client_sockfd, &current_char, 1, 0);
+        int8_t bytes_read = recv(session_data->client_sockfd, &current_char, 1, 0);
 
         if(bytes_read < 1)
         {
             error("ERROR reading from socket");
-            return;
+            return NULL;
         }
 
         if(current_char == '\r')
@@ -141,13 +154,14 @@ void ftp_listen(void)
         else if(n->handler)
         {
             printf("Command: %s\n", n->key);
-            n->handler(&session_data);
+            n->handler(session_data);
             n = ftp_command_trie.root;
         }
     }
 
-    close(session_data.client_sockfd);
-    close(session_data.server_sockfd);
+    free(session_data);
+
+    return NULL;
 }
 
 void *ftp_data_listen(void *args)
@@ -165,25 +179,33 @@ void *ftp_data_listen(void *args)
 
     FILE *f = fopen(d->filename, "rb");
 
-    fseek (f , 0 , SEEK_END);
-    size_t size = ftell (f);
-    rewind (f);
+    if(!f)
+    {
+        size_t message_size = strlen(MSG_NO_SUCH_FILE);
+        write(d->client_sockfd, MSG_NO_SUCH_FILE, message_size);
+    }
+    else
+    {
+        fseek (f , 0 , SEEK_END);
+        size_t size = ftell (f);
+        rewind (f);
 
-    char *buffer = malloc(size);
+        char *buffer = malloc(size);
 
-    fread(buffer, 1, size, f);
+        fread(buffer, 1, size, f);
 
-    fclose(f);
+        fclose(f);
 
-    int bytes_written = write(d->client_sockfd,MSG_OPENING_BINARY_CONN, strlen(MSG_OPENING_BINARY_CONN));
-    if (bytes_written < 0)
-        error("ERROR writing to socket");
+        int bytes_written = write(d->client_sockfd,MSG_OPENING_BINARY_CONN, strlen(MSG_OPENING_BINARY_CONN));
+        if (bytes_written < 0)
+            error("ERROR writing to socket");
 
-    bytes_written = send(data_client_sockfd, buffer, size, 0);
-    if (bytes_written < 0)
-        error("ERROR writing to socket");
+        bytes_written = send(data_client_sockfd, buffer, size, 0);
+        if (bytes_written < 0)
+            error("ERROR writing to socket");
 
-    free(buffer);
+        free(buffer);
+    }
 
     close(data_client_sockfd);
 

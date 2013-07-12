@@ -11,7 +11,7 @@ OBJECTS := $(subst src,$(BINDIR),$(SRCS:%.c=%.o))
 vpath $(SRCDIR)
 
 CC		= gcc
-CFLAGS	= -Wall -pedantic -extra -Werror -O2 -std=gnu99
+CFLAGS	= -Wall -pedantic -extra -Werror -O2 -std=gnu99 -g
 LIBS	= -lpthread
 LDFLAGS	= 
 INCLUDES	= -Isrc

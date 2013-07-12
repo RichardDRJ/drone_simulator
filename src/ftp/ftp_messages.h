@@ -10,5 +10,6 @@
 #define MSG_TELL_SIZE  "213"
 #define MSG_OPENING_BINARY_CONN "150 opening binary connection\r\n"
 #define MSG_QUIT_SUCCESS "221 quit successful\r\n"
+#define MSG_NO_SUCH_FILE "550 file not found\r\n"
 
 #endif
