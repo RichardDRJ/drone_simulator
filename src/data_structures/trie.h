@@ -1,7 +1,7 @@
 #ifndef TRIE_H
 #define TRIE_H
 
-#include "ftp_server.h"
+#include "ftp/ftp_server.h"
 
 struct trie
 {

@@ -1,10 +1,10 @@
 /* user includes */
-#include "socket_numbers.h"
-#include "error.h"
-#include "ftp_server.h"
-#include "ftp_handlers.h"
-#include "ftp_messages.h"
-#include "trie.h"
+#include "util/socket_numbers.h"
+#include "util/error.h"
+#include "ftp/ftp_server.h"
+#include "ftp/ftp_handlers.h"
+#include "ftp/ftp_messages.h"
+#include "data_structures/trie.h"
 
 /* Standard includes */
 #include <string.h>
@@ -188,4 +188,6 @@ void *ftp_data_listen(void *args)
     close(data_client_sockfd);
 
     pthread_mutex_unlock(&d->retr_mutex);
+
+    return NULL;
 }

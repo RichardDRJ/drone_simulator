@@ -1,7 +1,7 @@
 /* User includes */
-#include "socket_numbers.h"
-#include "error.h"
-#include "ftp_server.h"
+#include "util/socket_numbers.h"
+#include "util/error.h"
+#include "ftp/ftp_server.h"
 
 /* Standard includes */
 #include <string.h>
@@ -15,7 +15,7 @@
 
 uint8_t done = 0;
 
-int main(int argc, char *argv)
+int main(int argc, char **argv)
 {
     create_ftp_command_trie();
     ftp_listen();

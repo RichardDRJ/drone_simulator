@@ -2,15 +2,16 @@
 #include "ftp_handlers.h"
 #include "ftp_server.h"
 #include "ftp_messages.h"
-#include "error.h"
+#include "util/error.h"
 
 /* Standard includes */
-#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdint.h>
 #include <pthread.h>
+#include <strings.h>
+#include <string.h>
 
 /* Networking includes */
 
@@ -19,7 +20,6 @@
 
 char *read_args(int sockfd)
 {
-    uint8_t done = 0;
     uint32_t buffsize = 256;
     char *args_buffer = calloc(sizeof(char), buffsize);
     uint32_t index = 0;
@@ -74,7 +74,6 @@ void size_handler(struct session_data *d)
     char *args = read_args(d->client_sockfd);
     char *tokeniser_saveptr;
 
-    /*  TODO: Deal with escaped spaces. */
     char *filename = strtok_r(args, "\r\n ", &tokeniser_saveptr);
 
     FILE *file = fopen(filename, "rb");
@@ -86,7 +85,7 @@ void size_handler(struct session_data *d)
     char ret_message[message_size];
     bzero(ret_message, message_size);
 
-    message_size = snprintf(ret_message, message_size, MSG_TELL_SIZE " %d\r\n", sz);
+    message_size = snprintf(ret_message, message_size, MSG_TELL_SIZE " %zu\r\n", sz);
 
     write(d->client_sockfd, ret_message, message_size);
 }
