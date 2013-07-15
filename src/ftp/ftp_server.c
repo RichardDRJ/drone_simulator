@@ -1,5 +1,5 @@
 /* user includes */
-#include "util/socket_numbers.h"
+#include "util/port_numbers.h"
 #include "util/error.h"
 #include "ftp/ftp_server.h"
 #include "ftp/ftp_handlers.h"
@@ -69,8 +69,10 @@ void create_ftp_command_trie(void)
     insert_to_trie(&ftp_command_trie, "MLSD", &empty_handler);
 }
 
-void ftp_listen(int listen_socket)
+void *ftp_listen(void *args)
 {
+    int listen_port = *(int*)args;
+
     struct session_data td = {.type = 'A',
         .retr_mutex = PTHREAD_MUTEX_INITIALIZER,
         .data_sock = {  .sin_family = AF_INET,
@@ -88,7 +90,7 @@ void ftp_listen(int listen_socket)
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(listen_socket);
+    serv_addr.sin_port = htons(listen_port);
 
     if (bind(server_sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
         error("ERROR on binding");

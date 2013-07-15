@@ -7,7 +7,7 @@
 #include <netinet/in.h>
 
 void create_ftp_command_trie(void);
-void ftp_listen(int);
+void *ftp_listen(void*);
 void *ftp_session(void*);
 void *ftp_data_listen(void*);
 

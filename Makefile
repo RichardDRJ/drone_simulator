@@ -1,4 +1,4 @@
-MODULES	:= ftp data_structures util
+MODULES	:= ftp data_structures util video navdata
 SRCDIR	:= src $(addprefix src/,$(MODULES))
 BINDIR	:= bin
 BINMODS	:= $(addprefix bin/,$(MODULES))
@@ -7,12 +7,19 @@ SRCS	:= $(shell find $(SRCDIR) -name '*.c')
 HEADERS	:= $(shell find $(SRCDIR) -name '*.h')
 OBJECTS := $(subst src,$(BINDIR),$(SRCS:%.c=%.o))
 
+FFMPEG_LIBS=    libavdevice                        \
+				libavformat                        \
+				libavfilter                        \
+				libavcodec                         \
+				libswresample                      \
+				libswscale                         \
+				libavutil
 
 vpath $(SRCDIR)
 
 CC		= gcc
-CFLAGS	= -Wall -pedantic -extra -Werror -O2 -std=gnu99 -g
-LIBS	= -lpthread
+CFLAGS	= -Wall -pedantic -extra -Werror -O2 -std=gnu99 -g $(shell pkg-config --cflags $(FFMPEG_LIBS))
+LIBS	= -lpthread $(shell pkg-config --libs $(FFMPEG_LIBS))
 LDFLAGS	= 
 INCLUDES	= -Isrc
 

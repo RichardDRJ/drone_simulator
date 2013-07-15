@@ -1,8 +1,0 @@
-#ifndef SOCKET_NUMBERS_H
-#define SOCKET_NUMBERS_H
-
-#define AUTH_SOCK 5552
-#define CONTROL_SOCK 5556
-#define FTP_LISTEN_SOCK 5551
-
-#endif

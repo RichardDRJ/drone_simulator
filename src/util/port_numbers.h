@@ -1,0 +1,9 @@
+#ifndef SOCKET_NUMBERS_H
+#define SOCKET_NUMBERS_H
+
+#define AUTH_PORT 5552
+#define CONTROL_PORT 5556
+#define FTP_LISTEN_PORT 5551
+#define VIDEO_PORT 5555
+
+#endif
