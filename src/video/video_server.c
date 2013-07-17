@@ -388,7 +388,6 @@ static void send_video(int fd, int codec_id, char *filename)
 
     //open output file
     AVFormatContext *ofcx = avformat_alloc_context();
-    setup_output_context(fd, ofcx, iccx, ist);
 
     AVCodec *out_codec = avcodec_find_encoder(codec_id);
     if(!out_codec)
@@ -403,7 +402,7 @@ static void send_video(int fd, int codec_id, char *filename)
     occx->pix_fmt = AV_PIX_FMT_YUV420P;
     occx->width = 640;
     occx->height = 360;
-    occx->time_base = iccx->time_base;
+    occx->time_base= (AVRational){1,25};
     occx->gop_size = 25;
     occx->max_b_frames = 1;
     occx->bit_rate = 400000;
@@ -411,13 +410,7 @@ static void send_video(int fd, int codec_id, char *filename)
     if (avcodec_open2(occx, out_codec, NULL) < 0)
         error("Could not open codec");
 
-    AVOutputFormat *fmt;
-    fmt = av_guess_format("h264", NULL, NULL);
-    if (!fmt) {
-        error("Could not find suitable output format\n");
-    }
-    ofcx->oformat = fmt;
-
+    setup_output_context(fd, ofcx, occx, ist);
 
     int buffer_size = sizeof(unsigned char) * 4 * 1024 * 1024;
     unsigned char *pb_buffer = av_malloc(buffer_size);
@@ -451,14 +444,12 @@ static void send_video(int fd, int codec_id, char *filename)
 
             avcodec_decode_video2(iccx, frame, &got_picture, &pkt);
 
-            printf("Post-decode frame size: %dx%d, %d\n", frame->width, frame->height, frame->pkt_size);
-
+            printf("Post-decode line size: %d\n", frame->linesize[0]);
             printf("Pre-encode packet size: %d\n", pkt.size);
 
             if(got_picture)
             {
 
-                av_free_packet(&pkt);
                 av_init_packet(&pkt);
                 pkt.data = NULL;
                 frame->pts = ix;
@@ -475,7 +466,7 @@ static void send_video(int fd, int codec_id, char *filename)
                 {
                     parrot_video_encapsulation_t *p = create_frame_header(pkt.size, frame->width, frame->height, ix, pkt.pos, 0, 0);
                     write(fd, p, sizeof(parrot_video_encapsulation_t));
-                    //av_write_frame( ofcx, &pkt );
+                    av_write_frame( ofcx, &pkt );
                     printf("Line %d\n", __LINE__);
                 }
             }
@@ -495,17 +486,17 @@ static void send_video(int fd, int codec_id, char *filename)
     avformat_free_context( ofcx );
 }
 
-static AVStream *setup_output_context(int fd, AVFormatContext *ofcx, AVCodecContext *iccx, AVStream *ist)
+static AVStream *setup_output_context(int fd, AVFormatContext *ofcx, AVCodecContext *occx, AVStream *ist)
 {
-    AVOutputFormat *ofmt = av_guess_format( "avi", NULL, NULL );
+    AVOutputFormat *ofmt = av_guess_format( "h264", NULL, NULL );
     ofcx->oformat = ofmt;
 
     // Create output stream
     AVStream *ost = avformat_new_stream( ofcx, NULL );
-    avcodec_copy_context( ost->codec, iccx );
+    ost->codec = occx;
 
-    ost->sample_aspect_ratio.num = iccx->sample_aspect_ratio.num;
-    ost->sample_aspect_ratio.den = iccx->sample_aspect_ratio.den;
+    ost->sample_aspect_ratio.num = occx->sample_aspect_ratio.num;
+    ost->sample_aspect_ratio.den = occx->sample_aspect_ratio.den;
 
     // Assume r_frame_rate is accurate
     ost->r_frame_rate = ist->r_frame_rate;
