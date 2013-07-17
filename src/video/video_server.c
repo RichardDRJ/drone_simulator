@@ -1,5 +1,6 @@
 /* User includes */
 #include "util/error.h"
+#include "video/video_server.h"
 
 /* Video includes */
 #include <libavcodec/avcodec.h>
@@ -10,7 +11,7 @@
 /* Standard includes */
 #include <unistd.h>
 #include <stdio.h>
-#include <time.h>
+#include <sys/time.h>
 
 /* Networking includes */
 #include <sys/socket.h>
@@ -54,6 +55,54 @@ void *video_listen(void *args)
     close(client_sockfd);
 
     return NULL;
+}
+
+parrot_video_encapsulation_t *create_frame_header(uint32_t payload_size, uint16_t width, uint16_t height, uint32_t frame_number, uint64_t stream_byte_position, uint8_t sps, uint8_t pps)
+{
+    parrot_video_encapsulation_t *new_header = calloc(sizeof(parrot_video_encapsulation_t), 1);
+
+    new_header->signature[0] = 'P';
+    new_header->signature[1] = 'a';
+    new_header->signature[2] = 'V';
+    new_header->signature[3] = 'E';
+
+    new_header->version = 2;
+
+    new_header->video_codec = 4;    // This is h.264. Need to examine the possibilities for this field.
+
+    new_header->header_size = sizeof(parrot_video_encapsulation_t);
+    new_header->payload_size = payload_size;
+
+    new_header->encoded_stream_width = width;
+    new_header->display_width = width;
+
+    new_header->encoded_stream_height = height;
+    new_header->display_height = height;
+
+    new_header->frame_number = frame_number;
+
+    struct timeval tv;
+    gettimeofday(&tv, NULL);
+    new_header->timestamp = (unsigned long long)(tv.tv_sec) * 1000 + (unsigned long long)(tv.tv_usec) / 1000;
+
+    new_header->frame_type = 1;
+
+    new_header->control = 0;
+
+    new_header->stream_byte_position_lw = (uint32_t)(stream_byte_position & 0xFFFFFFFF);
+    new_header->stream_byte_position_uw = (uint32_t)((stream_byte_position >> 32) & 0xFFFFFFFF);
+
+    new_header->stream_id = 1;
+
+    new_header->total_slices = 1;
+    new_header->slice_index = 0;
+
+    new_header->header1_size = sps;
+    new_header->header2_size = pps;
+
+    new_header->advertised_size = payload_size;
+
+    return new_header;
 }
 
 /*
@@ -286,6 +335,7 @@ static int write_packet(void *opaque, uint8_t *buf, int buf_size)
     return 0;
 }
 
+static AVStream *setup_output_context(int fd, AVFormatContext *ofcx, AVCodecContext *iccx, AVStream *ist);
 
 static void send_video(int fd, int codec_id, char *filename)
 {
@@ -327,28 +377,47 @@ static void send_video(int fd, int codec_id, char *filename)
     if ( i_index < 0 )
         error("Cannot find input video stream");
 
+    iccx->codec = avcodec_find_decoder(iccx->codec_id);
+
+    if (avcodec_open2(iccx, iccx->codec, NULL) < 0)
+        error("Could not open codec");
+
     //
     // Output
     //
 
     //open output file
-    AVOutputFormat *ofmt = av_guess_format( "avi", NULL, NULL );
     AVFormatContext *ofcx = avformat_alloc_context();
-    ofcx->oformat = ofmt;
+    setup_output_context(fd, ofcx, iccx, ist);
 
-    // Create output stream
-    //ost = avformat_new_stream( ofcx, (AVCodec *) iccx->codec );
-    AVStream *ost = avformat_new_stream( ofcx, NULL );
-    avcodec_copy_context( ost->codec, iccx );
+    AVCodec *out_codec = avcodec_find_encoder(codec_id);
+    if(!out_codec)
+        error("Codec not found");
 
-    ost->sample_aspect_ratio.num = iccx->sample_aspect_ratio.num;
-    ost->sample_aspect_ratio.den = iccx->sample_aspect_ratio.den;
+    AVCodecContext *occx = avcodec_alloc_context3(out_codec);
+    if(!occx)
+        error("Could not allocate context");
 
-    // Assume r_frame_rate is accurate
-    ost->r_frame_rate = ist->r_frame_rate;
-    ost->avg_frame_rate = ost->r_frame_rate;
-    ost->time_base = av_inv_q( ost->r_frame_rate );
-    ost->codec->time_base = ost->time_base;
+    printf("Line %d\n", __LINE__);
+
+    occx->pix_fmt = AV_PIX_FMT_YUV420P;
+    occx->width = 640;
+    occx->height = 360;
+    occx->time_base = iccx->time_base;
+    occx->gop_size = 25;
+    occx->max_b_frames = 1;
+    occx->bit_rate = 400000;
+
+    if (avcodec_open2(occx, out_codec, NULL) < 0)
+        error("Could not open codec");
+
+    AVOutputFormat *fmt;
+    fmt = av_guess_format("h264", NULL, NULL);
+    if (!fmt) {
+        error("Could not find suitable output format\n");
+    }
+    ofcx->oformat = fmt;
+
 
     int buffer_size = sizeof(unsigned char) * 4 * 1024 * 1024;
     unsigned char *pb_buffer = av_malloc(buffer_size);
@@ -377,14 +446,43 @@ static void send_video(int fd, int codec_id, char *filename)
                 continue;
             }
 
-            pkt.stream_index = ost->id;
+            AVFrame *frame = avcodec_alloc_frame();
+            int got_picture;
 
-            pkt.pts = ix++;
-            pkt.dts = pkt.pts;
+            avcodec_decode_video2(iccx, frame, &got_picture, &pkt);
+
+            printf("Post-decode frame size: %dx%d, %d\n", frame->width, frame->height, frame->pkt_size);
+
+            printf("Pre-encode packet size: %d\n", pkt.size);
+
+            if(got_picture)
+            {
+
+                av_free_packet(&pkt);
+                av_init_packet(&pkt);
+                pkt.data = NULL;
+                frame->pts = ix;
+
+                int ret = avcodec_encode_video2(occx, &pkt, frame, &got_picture);
+                if(ret < 0)
+                    error("Encoding failed");
+
+                printf("Post-encode packet size: %d\n", pkt.size);
+
+                printf("Line %d\n", __LINE__);
+
+                if(got_picture)
+                {
+                    parrot_video_encapsulation_t *p = create_frame_header(pkt.size, frame->width, frame->height, ix, pkt.pos, 0, 0);
+                    write(fd, p, sizeof(parrot_video_encapsulation_t));
+                    //av_write_frame( ofcx, &pkt );
+                    printf("Line %d\n", __LINE__);
+                }
+            }
 
             printf("Line %d\n", __LINE__);
 
-            av_write_frame( ofcx, &pkt );
+            ++ix;
         }
         av_free_packet( &pkt );
         av_init_packet( &pkt );
@@ -392,11 +490,28 @@ static void send_video(int fd, int codec_id, char *filename)
         timenow = time(0);
     }
 
-    printf("Line %d\n", __LINE__);
     av_read_pause( ifcx );
-    printf("Line %d\n", __LINE__);
     av_write_trailer( ofcx );
-    printf("Line %d\n", __LINE__);
     avformat_free_context( ofcx );
-    printf("Line %d\n", __LINE__);
+}
+
+static AVStream *setup_output_context(int fd, AVFormatContext *ofcx, AVCodecContext *iccx, AVStream *ist)
+{
+    AVOutputFormat *ofmt = av_guess_format( "avi", NULL, NULL );
+    ofcx->oformat = ofmt;
+
+    // Create output stream
+    AVStream *ost = avformat_new_stream( ofcx, NULL );
+    avcodec_copy_context( ost->codec, iccx );
+
+    ost->sample_aspect_ratio.num = iccx->sample_aspect_ratio.num;
+    ost->sample_aspect_ratio.den = iccx->sample_aspect_ratio.den;
+
+    // Assume r_frame_rate is accurate
+    ost->r_frame_rate = ist->r_frame_rate;
+    ost->avg_frame_rate = ost->r_frame_rate;
+    ost->time_base = av_inv_q( ost->r_frame_rate );
+    ost->codec->time_base = ost->time_base;
+
+    return ost;
 }
