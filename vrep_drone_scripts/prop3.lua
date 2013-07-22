@@ -1,6 +1,7 @@
 ts=simGetSimulationTimeStep()
 
 if (simGetScriptExecutionCount()==0) then
+	heli=simGetObjectHandle('Quadricopter')
 	propeller=simGetObjectHandle('Quadricopter_propeller3')
 	propellerRespondable=simGetObjectHandle('Quadricopter_propeller_respondable3')
 	type=sim_particle_roughspheres+sim_particle_respondable1to4+sim_particle_respondable5to8+
@@ -77,6 +78,9 @@ end
 -- Apply a reactive force onto the body:
 --totalExertedForce=particleCnt*particleDensity*particleVelocity*math.pi*particleSize*particleSize*particleSize/(6*ts)
 force={0,0,totalExertedForce}
+rm=simBuildMatrix({0,0,0},simGetObjectOrientation(heli, -1))
+force=simMultiplyVector(rm, force)
+
 m[4]=0
 m[8]=0
 m[12]=0

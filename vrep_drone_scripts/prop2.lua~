@@ -1,14 +1,13 @@
 ts=simGetSimulationTimeStep()
 
 if (simGetScriptExecutionCount()==0) then
-	heli=simGetObjectHandle('Quadricopter')
-	propeller=simGetObjectHandle('Quadricopter_propeller1')
-	propellerRespondable=simGetObjectHandle('Quadricopter_propeller_respondable1')
+	propeller=simGetObjectHandle('Quadricopter_propeller2')
+	propellerRespondable=simGetObjectHandle('Quadricopter_propeller_respondable2')
 	type=sim_particle_roughspheres+sim_particle_respondable1to4+sim_particle_respondable5to8+
 		sim_particle_cyclic+sim_particle_ignoresgravity
 	simulateParticles=simGetScriptSimulationParameter(sim_handle_self,'simulateParticles')
 	particleVelocity=simGetScriptSimulationParameter(sim_handle_self,'particleVelocity')
-	
+
 	totalExertedForce=simGetScriptSimulationParameter(sim_handle_self,'totalForce')
 
 	particleCountPerSecond=simGetScriptSimulationParameter(sim_handle_self,'particleCountPerSecond')
@@ -25,8 +24,6 @@ if (simGetScriptExecutionCount()==0) then
 	notFullParticles=0
 	params={2,1,0.2,3,0.4}
 end
-
-particleVelocity=simGetScriptSimulationParameter(sim_handle_self,'particleVelocity')
 
 totalExertedForce=simGetScriptSimulationParameter(sim_handle_self,'totalForce')
 
@@ -80,15 +77,11 @@ end
 -- Apply a reactive force onto the body:
 --totalExertedForce=particleCnt*particleDensity*particleVelocity*math.pi*particleSize*particleSize*particleSize/(6*ts)
 force={0,0,totalExertedForce}
-rm=simBuildMatrix({0,0,0},simGetObjectOrientation(heli, -1))
-force=simMultiplyVector(rm, force)
-
 m[4]=0
 m[8]=0
 m[12]=0
-torque={0,0,-0.002*particleVelocity}
+torque={0,0,0.002*particleVelocity}
 torque=simMultiplyVector(m,torque)
-print(force[3])
 simAddForceAndTorque(propellerRespondable,force,torque)
 
 -- Now make sure that child scripts attached on this hierarchy are also executed:
