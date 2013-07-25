@@ -24,49 +24,49 @@ void create_ftp_command_trie(void)
     bzero(&ftp_command_trie, sizeof(ftp_command_trie));
 
     /* Access control commands */
-    insert_to_trie(&ftp_command_trie, "USER", &user_handler);
-    insert_to_trie(&ftp_command_trie, "PASS", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "ACCT", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "CWD", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "CDUP", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "SMNT", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "REIN", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "QUIT", &quit_handler);
+    insert_to_trie(&ftp_command_trie, "USER", &ftp_user_handler);
+    insert_to_trie(&ftp_command_trie, "PASS", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "ACCT", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "CWD", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "CDUP", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "SMNT", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "REIN", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "QUIT", &ftp_quit_handler);
 
     /* Transfer parameter commands */
-    insert_to_trie(&ftp_command_trie, "PORT", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "PASV", &pasv_handler);
-    insert_to_trie(&ftp_command_trie, "TYPE", &type_handler);
-    insert_to_trie(&ftp_command_trie, "STRU", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "MODE", &empty_handler);
+    insert_to_trie(&ftp_command_trie, "PORT", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "PASV", &ftp_pasv_handler);
+    insert_to_trie(&ftp_command_trie, "TYPE", &ftp_type_handler);
+    insert_to_trie(&ftp_command_trie, "STRU", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "MODE", &ftp_empty_handler);
 
     /* FTP service commands */
-    insert_to_trie(&ftp_command_trie, "RETR", &retr_handler);
-    insert_to_trie(&ftp_command_trie, "STOR", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "ATOU", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "APPE", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "ALLO", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "REST", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "RNFR", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "RNTO", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "ABOR", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "DELE", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "RMD", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "MKD", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "PWD", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "LIST", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "NLST", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "SITE", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "SYST", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "STAT", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "HELP", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "NOOP", &empty_handler);
+    insert_to_trie(&ftp_command_trie, "RETR", &ftp_retr_handler);
+    insert_to_trie(&ftp_command_trie, "STOR", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "ATOU", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "APPE", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "ALLO", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "REST", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "RNFR", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "RNTO", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "ABOR", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "DELE", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "RMD", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "MKD", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "PWD", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "LIST", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "NLST", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "SITE", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "SYST", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "STAT", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "HELP", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "NOOP", &ftp_empty_handler);
 
     /* FTP extensions */
-    insert_to_trie(&ftp_command_trie, "SIZE", &size_handler);
-    insert_to_trie(&ftp_command_trie, "MTDM", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "MLST", &empty_handler);
-    insert_to_trie(&ftp_command_trie, "MLSD", &empty_handler);
+    insert_to_trie(&ftp_command_trie, "SIZE", &ftp_size_handler);
+    insert_to_trie(&ftp_command_trie, "MTDM", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "MLST", &ftp_empty_handler);
+    insert_to_trie(&ftp_command_trie, "MLSD", &ftp_empty_handler);
 }
 
 void *ftp_listen(void *args)

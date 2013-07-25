@@ -15,11 +15,11 @@ struct trie_node
     struct trie_node *centre;
     struct trie_node *right;
     char *key;
-    void (*handler)(struct session_data*);
+    void (*handler)(void*);
 };
 
 struct trie *init_trie(void);
-void insert_to_trie(struct trie *t, char *c, void (*handler)(struct session_data*));
+void insert_to_trie(struct trie *t, char *c, void (*handler)(void*));
 struct trie_node *traverse_to_child_char(char c, struct trie_node *n);
 
 #endif

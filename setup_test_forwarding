@@ -1,1 +1,19 @@
+#!/bin/bash
+
+iptables -F
+iptables -X
+iptables -t nat -F
+iptables -t nat -X
+iptables -t mangle -F
+iptables -t mangle -X
+iptables -P INPUT ACCEPT
+iptables -P FORWARD ACCEPT
+iptables -P OUTPUT ACCEPT
+
+for i in {5551..5559}
+do
+    iptables -t nat -A OUTPUT -p tcp -d 192.168.1.1 --dport $i -j DNAT --to 127.0.0.1:$(($i + 20000))
+    iptables -t nat -A OUTPUT -p udp -d 192.168.1.1 --dport $i -j DNAT --to 127.0.0.1:$(($i + 20000))
+done
+
 iptables -t nat -A OUTPUT -d 192.168.1.1 -j DNAT --to-destination 127.0.0.1

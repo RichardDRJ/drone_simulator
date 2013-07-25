@@ -69,8 +69,9 @@ char *read_args(int sockfd)
     return args_buffer;
 }
 
-void size_handler(struct session_data *d)
+void ftp_size_handler(void *data)
 {
+    struct session_data *d = data;
     char *args = read_args(d->client_sockfd);
     char *tokeniser_saveptr;
 
@@ -99,8 +100,9 @@ void size_handler(struct session_data *d)
     }
 }
 
-void type_handler(struct session_data *d)
+void ftp_type_handler(void *data)
 {
+    struct session_data *d = data;
     char *args = read_args(d->client_sockfd);
     char *tokeniser_saveptr;
 
@@ -112,8 +114,9 @@ void type_handler(struct session_data *d)
     write(d->client_sockfd, MSG_OPERATION_SUCCESS, message_size);
 }
 
-void user_handler(struct session_data *d)
+void ftp_user_handler(void *data)
 {
+    struct session_data *d = data;
     char *args = read_args(d->client_sockfd);
     char *tokeniser_saveptr;
 
@@ -126,8 +129,9 @@ void user_handler(struct session_data *d)
     }
 }
 
-void pasv_handler(struct session_data *d)
+void ftp_pasv_handler(void *data)
 {
+    struct session_data *d = data;
     char ret_message[sizeof(MSG_PASSIVE_SUCCESS) + 29];
 
     d->data_sock.sin_port = 0;
@@ -150,21 +154,24 @@ void pasv_handler(struct session_data *d)
     write(d->client_sockfd, ret_message, strlen(ret_message));
 }
 
-void quit_handler(struct session_data *d)
+void ftp_quit_handler(void *data)
 {
+    struct session_data *d = data;
     close(d->client_sockfd);
     close(d->server_sockfd);
     write(d->client_sockfd, MSG_QUIT_SUCCESS, strlen(MSG_QUIT_SUCCESS));
     d->done = 1;
 }
 
-void empty_handler(struct session_data *d)
+void ftp_empty_handler(void *data)
 {
+    struct session_data *d = data;
     write(d->client_sockfd, MSG_UNSUPPORTED, strlen(MSG_UNSUPPORTED));
 }
 
-void retr_handler(struct session_data *d)
+void ftp_retr_handler(void *data)
 {
+    struct session_data *d = data;
     char *args = read_args(d->client_sockfd);
     char *tokeniser_saveptr;
 

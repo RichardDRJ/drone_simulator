@@ -1,4 +1,5 @@
-MODULES	:= ftp data_structures util video navdata
+LIBMODS	:= vrep
+MODULES	:= ftp data_structures util video navdata control $(addprefix libs/,$(LIBMODS))
 SRCDIR	:= src $(addprefix src/,$(MODULES))
 BINDIR	:= bin
 BINMODS	:= $(addprefix bin/,$(MODULES))
@@ -18,9 +19,10 @@ FFMPEG_LIBS=    libavdevice                        \
 vpath $(SRCDIR)
 
 CC		= gcc
-CFLAGS	= -Wall -pedantic -extra -Werror -O2 -std=gnu99 -g $(shell pkg-config --cflags $(FFMPEG_LIBS))
+CFLAGS	= -Wall -pedantic -Werror -extra -std=gnu99 -g $(shell pkg-config --cflags $(FFMPEG_LIBS))
 LIBS	= -lpthread $(shell pkg-config --libs $(FFMPEG_LIBS))
 LDFLAGS	= 
+DEFS	= -DMAX_EXT_API_CONNECTIONS=255 -DNON_MATLAB_PARSING
 INCLUDES	= -Isrc
 
 .PHONY: all clean
@@ -34,7 +36,7 @@ $(TARGET): $(OBJECTS)
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 $(BINDIR)/%.o: src/%.c
-	$(CC) $(CFLAGS) $(LDFLAGS) $(INCLUDES) -c $< -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(INCLUDES) $(DEFS) -c $< -o $@
 
 $(SRCS): $(HEADERS)
 

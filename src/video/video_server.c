@@ -26,6 +26,7 @@ static int write_packet(void *opaque, uint8_t *buf, int buf_size);
 void *video_listen(void *args)
 {
     av_register_all();
+    av_log_set_level(AV_LOG_QUIET);
 
     int port = *(int*)args;
 
@@ -47,8 +48,6 @@ void *video_listen(void *args)
     int client_sockfd = accept(server_sockfd, (struct sockaddr *) &cli_addr, &clilen);
     if(client_sockfd < 0)
         error("ERROR on accept");
-
-    printf("Accepted.\n");
 
     send_video(client_sockfd, AV_CODEC_ID_H264, "/dev/video0");
 
@@ -105,7 +104,6 @@ parrot_video_encapsulation_t *create_frame_header(uint32_t payload_size, AVFrame
 
 static int write_packet(void *opaque, uint8_t *buf, int buf_size)
 {
-    printf("HERE\n");
     int net_fd = *(int*)opaque;
 
     write(net_fd, buf, buf_size);
@@ -181,8 +179,6 @@ static void send_video(int fd, int codec_id, char *filename)
     if(!occx)
         error("Could not allocate context");
 
-    printf("Line %d\n", __LINE__);
-
     occx->pix_fmt = AV_PIX_FMT_YUV420P;
     occx->width = 640;
     occx->height = 360;
@@ -208,9 +204,6 @@ static void send_video(int fd, int codec_id, char *filename)
 
     //start reading packets from stream and write them to file
 
-    av_dump_format( ifcx, 0, ifcx->filename, 0 );
-    av_dump_format( ofcx, 0, ofcx->filename, 1 );
-
     ix = 0;
 
     av_init_packet( &pkt );
@@ -220,9 +213,6 @@ static void send_video(int fd, int codec_id, char *filename)
             int got_picture;
 
             avcodec_decode_video2(iccx, frame, &got_picture, &pkt);
-
-            printf("Post-decode line size: %d\n", frame->linesize[0]);
-            printf("Pre-encode packet size: %d\n", pkt.size);
 
             if(got_picture)
             {
@@ -235,20 +225,13 @@ static void send_video(int fd, int codec_id, char *filename)
                 if(ret < 0)
                     error("Encoding failed");
 
-                printf("Post-encode packet size: %d\n", pkt.size);
-
-                printf("Line %d\n", __LINE__);
-
                 if(got_picture)
                 {
                     parrot_video_encapsulation_t *p = create_frame_header(pkt.size, frame, ix, pkt.pos, 0, 0);
                     write(fd, p, sizeof(parrot_video_encapsulation_t));
                     av_write_frame( ofcx, &pkt );
-                    printf("Line %d\n", __LINE__);
                 }
             }
-
-            printf("Line %d\n", __LINE__);
 
             ++ix;
         }
