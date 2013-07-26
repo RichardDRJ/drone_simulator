@@ -6,5 +6,6 @@
 void control_empty_handler(void*);
 void control_ref_handler(void*);
 void control_pcmd_handler(void*);
+void control_pcmd_mag_handler(void*);
 
 #endif

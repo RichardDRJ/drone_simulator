@@ -12,9 +12,9 @@
 #include <pthread.h>
 #include <strings.h>
 #include <string.h>
+#include <errno.h>
 
 /* Networking includes */
-
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -26,21 +26,29 @@ void control_empty_handler(void *arg)
 static char *control_read_args(struct control_session_data *session_data)
 {
     //  Doesn't work because now the packet is read into a buffer.
-    uint16_t buf_size = 200;
-    char *buffer = malloc(sizeof(char) * buf_size);
-    char *curr_char = buffer;
+    char *buf_start = session_data->buf_ptr;
 
     while(1)
     {
-        int8_t bytes_read = recv(session_data->sockfd, curr_char, 1, 0);
+        if(!session_data->bytes_left)
+        {
+            errno = ENOBUFS;
+            error("ERROR buffer too small");
+        }
+        else
+        {
+            printf("%c", *session_data->buf_ptr);
+            if(*session_data->buf_ptr == '\r')
+                break;
 
-        if(bytes_read < 1)
-            error("ERROR reading from socket");
-        else if(bytes_read == 1 && *curr_char++ == '\r')
-            break;
+            --session_data->bytes_left;
+            ++session_data->buf_ptr;
+        }
     }
 
-    return buffer;
+    printf("\n");
+
+    return buf_start;
 }
 
 void control_ref_handler(void *arg)
@@ -55,9 +63,9 @@ void control_ref_handler(void *arg)
     
     printf("REF handler\n");
 
-    if(seq_num > session_data->seq_num)
+    if(seq_num >= session_data->seq_num)
     {
-        session_data->atref((control >> 9) & 1, (control >> 8) & 1);
+        session_data->at_ref(session_data, (control >> 9) & 1, (control >> 8) & 1);
         session_data->seq_num = seq_num;
     }
 }
@@ -69,17 +77,41 @@ void control_pcmd_handler(void *arg)
 
     uint32_t seq_num;
     uint32_t control;
-    float left_right;
-    float front_back;
+    float roll;
+    float pitch;
     float vert_speed;
     float ang_speed;
 
-    sscanf(args, "%" SCNu32 ",%" SCNu32 ",%d,%d,%d,%d\r", &seq_num, &control, (int*)&left_right, (int*)&front_back, (int*)&vert_speed, (int*)&ang_speed);
+    sscanf(args, "%" SCNu32 ",%" SCNu32 ",%d,%d,%d,%d\r", &seq_num, &control, (int*)&roll, (int*)&pitch, (int*)&vert_speed, (int*)&ang_speed);
 
-    if(seq_num > session_data->seq_num)
+    if(seq_num >= session_data->seq_num)
     {
-//        session_data->atref((control >> 9) & 1, (control >> 8) & 1);
-        printf("%d,%d,%f,%f,%f,%f\n", seq_num, control, left_right, front_back, vert_speed, ang_speed);
+        printf("%d,%d,%f,%f,%f,%f\n", seq_num, control, roll, pitch, vert_speed, ang_speed);
+        session_data->at_pcmd_mag(session_data, control, roll, pitch, vert_speed, ang_speed, 0.0f, 0.0f);
+        session_data->seq_num = seq_num;
+    }
+}
+
+void control_pcmd_mag_handler(void *arg)
+{
+    struct control_session_data *session_data = arg;
+    char *args = control_read_args(session_data);
+
+    uint32_t seq_num;
+    uint32_t control;
+    float roll;
+    float pitch;
+    float vert_speed;
+    float ang_speed;
+    float magneto_psi;
+    float magneto_psi_accuracy;
+
+    sscanf(args, "%" SCNu32 ",%" SCNu32 ",%d,%d,%d,%d,%d,%d\r", &seq_num, &control, (int*)&roll, (int*)&pitch, (int*)&vert_speed, (int*)&ang_speed, (int*)&magneto_psi, (int*)&magneto_psi_accuracy);
+
+    if(seq_num >= session_data->seq_num)
+    {
+        printf("%d,%d,%f,%f,%f,%f\n", seq_num, control, roll, pitch, vert_speed, ang_speed);
+        session_data->at_pcmd_mag(session_data, control, roll, pitch, vert_speed, ang_speed, magneto_psi, magneto_psi_accuracy);
         session_data->seq_num = seq_num;
     }
 }

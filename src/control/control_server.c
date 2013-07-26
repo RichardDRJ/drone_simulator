@@ -2,6 +2,7 @@
 #include "util/port_numbers.h"
 #include "util/error.h"
 #include "control/control_server.h"
+#include "control/vrep_control.h"
 #include "control/control_handlers.h"
 #include "control/control_messages.h"
 #include "data_structures/trie.h"
@@ -25,7 +26,7 @@ void create_control_command_trie(void)
 
     insert_to_trie(&control_command_trie, "AT*REF", &control_ref_handler);
     insert_to_trie(&control_command_trie, "AT*PCMD", &control_pcmd_handler);
-    insert_to_trie(&control_command_trie, "AT*PCMD_MAG", &control_empty_handler);
+    insert_to_trie(&control_command_trie, "AT*PCMD_MAG", &control_pcmd_mag_handler);
     insert_to_trie(&control_command_trie, "AT*FTRIM", &control_empty_handler);
     insert_to_trie(&control_command_trie, "AT*CONFIG", &control_empty_handler);
     insert_to_trie(&control_command_trie, "AT*CONFIG_IDS", &control_empty_handler);
@@ -38,50 +39,51 @@ void *control_listen(void *args)
     int listen_port = *(int*)args;
 
     struct control_session_data td = {.done = 0,
+        .buf_size = 200,
+        .bytes_left = 0,
+        .buffer = malloc(sizeof(char) * td.buf_size),
+        .buf_ptr = td.buffer,
         .seq_num = 0,
+        .len = sizeof(td.serv_addr),
+        .max_roll = 0.4f,
+        .max_pitch = 0.4f,
+        .max_vert_speed = 1000.0f,
+        .max_ang_speed = 1.0f,
+        .at_pcmd_mag = vrep_at_pcmd_mag,
+        .at_ref = vrep_at_ref,
     };
-
-    struct sockaddr_in serv_addr;
 
     td.sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(listen_port);
+    td.serv_addr.sin_family = AF_INET;
+    td.serv_addr.sin_addr.s_addr = INADDR_ANY;
+    td.serv_addr.sin_port = htons(listen_port);
 
-    if (bind(td.sockfd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) 
+    if (bind(td.sockfd, (struct sockaddr *)&td.serv_addr, td.len) < 0) 
         error("ERROR on binding");
 
     struct trie_node *n = control_command_trie.root;
 
-    socklen_t len = sizeof(serv_addr);
-    uint16_t buf_size = 200;
-    int16_t bytes_left = 0;
-    char buffer[buf_size];
-    char *buf_ptr = buffer;
-
     while(!td.done)
     {
-        if(!bytes_left)
+        if(!td.bytes_left)
         {
-            bytes_left = recvfrom(td.sockfd, buffer, buf_size, 0, (struct sockaddr *)&serv_addr, &len);
+            td.bytes_left = recvfrom(td.sockfd, td.buffer, td.buf_size, 0, (struct sockaddr *)&td.serv_addr, &td.len);
 
-            printf("bytes_left: %d\n", bytes_left);
-
-            if(bytes_left < 1)
+            if(td.bytes_left < 1)
                 error("ERROR reading from socket");
 
-            buf_ptr = buffer;
+            td.buf_ptr = td.buffer;
         }
         else
         {
-            printf("read %c\n", *buf_ptr);
+            printf("read %c\n", *td.buf_ptr);
 
-            if(*buf_ptr == '=')
+            if(*td.buf_ptr == '=')
             {
                 if(n && n->handler)
                 {
-                    printf("Command: %s\n", n->key);
+                    ++td.buf_ptr;
                     n->handler(&td);
                     n = control_command_trie.root;
                 }
@@ -90,14 +92,14 @@ void *control_listen(void *args)
             }
             else
             {
-                n = traverse_to_child_char(*buf_ptr, n);
+                n = traverse_to_child_char(*td.buf_ptr, n);
 
                 if(!n)
                     n = control_command_trie.root;
             }
 
-            ++buf_ptr;
-            --bytes_left;
+            ++td.buf_ptr;
+            --td.bytes_left;
         }
     }
 
