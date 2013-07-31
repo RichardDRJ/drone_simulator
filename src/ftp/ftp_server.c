@@ -1,6 +1,7 @@
 /* user includes */
 #include "util/port_numbers.h"
 #include "util/error.h"
+#include "util/server_init.h"
 #include "ftp/ftp_server.h"
 #include "ftp/ftp_handlers.h"
 #include "ftp/ftp_messages.h"
@@ -71,7 +72,8 @@ void create_ftp_command_trie(void)
 
 void *ftp_listen(void *args)
 {
-    int listen_port = *(int*)args;
+    struct server_init *server_init = (struct server_init*)args;
+    int listen_port = server_init->port;
 
     struct session_data td = {.type = 'A',
         .retr_mutex = PTHREAD_MUTEX_INITIALIZER,

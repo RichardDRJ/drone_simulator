@@ -1,6 +1,7 @@
 /* user includes */
 #include "util/port_numbers.h"
 #include "util/error.h"
+#include "util/server_init.h"
 #include "control/control_server.h"
 #include "control/vrep_control.h"
 #include "control/control_handlers.h"
@@ -36,7 +37,8 @@ void create_control_command_trie(void)
 
 void *control_listen(void *args)
 {
-    int listen_port = *(int*)args;
+    struct server_init *server_init = (struct server_init*)args;
+    int listen_port = server_init->port;
 
     struct control_session_data td = {.done = 0,
         .buf_size = 200,
@@ -49,8 +51,8 @@ void *control_listen(void *args)
         .max_pitch = 0.4f,
         .max_vert_speed = 1000.0f,
         .max_ang_speed = 1.0f,
-        .at_pcmd_mag = vrep_at_pcmd_mag,
-        .at_ref = vrep_at_ref,
+        .at_pcmd_mag = server_init->d->at_pcmd_mag,
+        .at_ref = server_init->d->at_ref,
     };
 
     td.sockfd = socket(AF_INET, SOCK_DGRAM, 0);
@@ -77,8 +79,6 @@ void *control_listen(void *args)
         }
         else
         {
-            printf("read %c\n", *td.buf_ptr);
-
             if(*td.buf_ptr == '=')
             {
                 if(n && n->handler)

@@ -61,8 +61,6 @@ void control_ref_handler(void *arg)
 
     sscanf(args, "%" SCNu32 ",%" SCNu32 "\r", &seq_num, &control);
     
-    printf("REF handler\n");
-
     if(seq_num >= session_data->seq_num)
     {
         session_data->at_ref(session_data, (control >> 9) & 1, (control >> 8) & 1);
@@ -86,7 +84,6 @@ void control_pcmd_handler(void *arg)
 
     if(seq_num >= session_data->seq_num)
     {
-        printf("%d,%d,%f,%f,%f,%f\n", seq_num, control, roll, pitch, vert_speed, ang_speed);
         session_data->at_pcmd_mag(session_data, control, roll, pitch, vert_speed, ang_speed, 0.0f, 0.0f);
         session_data->seq_num = seq_num;
     }
@@ -110,7 +107,6 @@ void control_pcmd_mag_handler(void *arg)
 
     if(seq_num >= session_data->seq_num)
     {
-        printf("%d,%d,%f,%f,%f,%f\n", seq_num, control, roll, pitch, vert_speed, ang_speed);
         session_data->at_pcmd_mag(session_data, control, roll, pitch, vert_speed, ang_speed, magneto_psi, magneto_psi_accuracy);
         session_data->seq_num = seq_num;
     }

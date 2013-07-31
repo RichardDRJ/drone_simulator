@@ -1,6 +1,9 @@
 /* User includes */
 #include "util/error.h"
+#include "util/data_options.h"
+#include "util/server_init.h"
 #include "video/video_server.h"
+#include "video/webcam_video.h"
 
 /* Video includes */
 #include <libavcodec/avcodec.h>
@@ -20,7 +23,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-static void send_video(int fd, int codec_id, char *filename);
+static void send_video(int fd, int codec_id, struct data_options *dopts);
 static int write_packet(void *opaque, uint8_t *buf, int buf_size);
 
 void *video_listen(void *args)
@@ -28,7 +31,8 @@ void *video_listen(void *args)
     av_register_all();
     av_log_set_level(AV_LOG_QUIET);
 
-    int port = *(int*)args;
+    struct server_init *server_init = (struct server_init*)args;
+    int port = server_init->port;
 
     struct sockaddr_in serv_addr;
     struct sockaddr_in cli_addr;
@@ -49,7 +53,7 @@ void *video_listen(void *args)
     if(client_sockfd < 0)
         error("ERROR on accept");
 
-    send_video(client_sockfd, AV_CODEC_ID_H264, "/dev/video0");
+    send_video(client_sockfd, AV_CODEC_ID_H264, server_init->d);
 
     close(client_sockfd);
 
@@ -82,7 +86,7 @@ parrot_video_encapsulation_t *create_frame_header(uint32_t payload_size, AVFrame
 
     new_header->timestamp = frame->pts;
 
-    new_header->frame_type = 1;
+    new_header->frame_type = frame->pict_type == AV_PICTURE_TYPE_P ? FRAME_TYPE_P_FRAME : FRAME_TYPE_I_FRAME;
 
     new_header->control = 0;
 
@@ -113,9 +117,8 @@ static int write_packet(void *opaque, uint8_t *buf, int buf_size)
 
 static AVStream *setup_output_context(int fd, AVFormatContext *ofcx, AVCodecContext *iccx, AVStream *ist);
 
-static void send_video(int fd, int codec_id, char *filename)
+static void send_video(int fd, int codec_id, struct data_options *dopts)
 {
-    AVStream *ist = NULL;
     AVPacket pkt;
 
     // Initialize library
@@ -128,41 +131,14 @@ static void send_video(int fd, int codec_id, char *filename)
     // Input
     //
 
-    AVInputFormat *ifmt = av_find_input_format("video4linux2");
+    struct input_stream in_st = 
+    {
+        .ist = NULL,
+        .ifcx = NULL,
+        .iccx = NULL,
+    };
 
-    AVFormatContext *ifcx = NULL;
-    AVCodecContext *iccx = NULL;
-
-    //open rtsp
-    if ( avformat_open_input( &ifcx, filename, ifmt, NULL) != 0 )
-        error("Cannot open input file");
-
-    if ( avformat_find_stream_info( ifcx, NULL ) < 0 )
-        error( "Cannot find stream info");
-
-/*    int in_buffer_size = sizeof(unsigned char) * 1024;
-    unsigned char *in_pb_buffer = av_malloc(in_buffer_size);
-
-    ifcx->pb = avio_alloc_context(in_pb_buffer, in_buffer_size, 0, NULL, NULL, NULL, NULL);*/
-
-    //search video stream
-    int i_index = -1;
-    int ix = 0;
-    for ( ; ix < ifcx->nb_streams; ix++ ) {
-        iccx = ifcx->streams[ ix ]->codec;
-        if ( iccx->codec_type == AVMEDIA_TYPE_VIDEO ) {
-            ist = ifcx->streams[ ix ];
-            i_index = ix;
-            break;
-        }
-    }
-    if ( i_index < 0 )
-        error("Cannot find input video stream");
-
-    iccx->codec = avcodec_find_decoder(iccx->codec_id);
-
-    if (avcodec_open2(iccx, iccx->codec, NULL) < 0)
-        error("Could not open codec");
+    dopts->open_video_stream(&in_st);
 
     //
     // Output
@@ -193,7 +169,7 @@ static void send_video(int fd, int codec_id, char *filename)
     if (avcodec_open2(occx, out_codec, NULL) < 0)
         error("Could not open codec");
 
-    setup_output_context(fd, ofcx, occx, ist);
+    setup_output_context(fd, ofcx, occx, in_st.ist);
 
     int buffer_size = sizeof(unsigned char) * 1024 * 1024;
     unsigned char *pb_buffer = av_malloc(buffer_size);
@@ -204,24 +180,47 @@ static void send_video(int fd, int codec_id, char *filename)
 
     //start reading packets from stream and write them to file
 
-    ix = 0;
+    int ix = 0;
+
+    AVFrame *frame = avcodec_alloc_frame();
+
+    AVFrame *rFrame = avcodec_alloc_frame();
+
+    /*int num_bytes = avpicture_get_size(occx->pix_fmt, occx->width, occx->height);
+    uint8_t* rFrame_buffer = av_malloc(num_bytes*sizeof(uint8_t));
+    avpicture_fill((AVPicture*)rFrame, rFrame_buffer, occx->pix_fmt, occx->width, occx->height);*/
+
+    int w = in_st.iccx->width;
+    int h = in_st.iccx->height;
+
+    int num_bytes = avpicture_get_size(occx->pix_fmt, w, h);
+    uint8_t* rFrame_buffer = av_malloc(num_bytes*sizeof(uint8_t));
+    avpicture_fill((AVPicture*)rFrame, rFrame_buffer, occx->pix_fmt, w, h);
+
+    struct SwsContext *img_convert_ctx;
 
     av_init_packet( &pkt );
-    while ( av_read_frame( ifcx, &pkt ) >= 0) {
-        if ( pkt.stream_index == i_index ) { //packet is video               
-            AVFrame *frame = avcodec_alloc_frame();
+    while ( av_read_frame( in_st.ifcx, &pkt ) >= 0) {
+        if ( pkt.stream_index == in_st.video_stream_index ) { //packet is video 
             int got_picture;
 
-            avcodec_decode_video2(iccx, frame, &got_picture, &pkt);
+            avcodec_decode_video2(in_st.iccx, frame, &got_picture, &pkt);
 
             if(got_picture)
             {
-
-                av_init_packet(&pkt);
-                pkt.data = NULL;
                 frame->pts = ix;
 
-                int ret = avcodec_encode_video2(occx, &pkt, frame, &got_picture);
+                img_convert_ctx = sws_getContext(w, h, frame->format, occx->width, occx->height, occx->pix_fmt, SWS_BILINEAR, NULL, NULL, NULL);
+                if(img_convert_ctx == NULL)
+                    error("Cannot initialize the conversion context");
+
+                sws_scale(img_convert_ctx, (const uint8_t* const*)frame->data, frame->linesize, 0, in_st.iccx->height, rFrame->data, rFrame->linesize);
+
+                av_free_packet( &pkt );
+                av_init_packet(&pkt);
+                pkt.data = NULL;
+
+                int ret = avcodec_encode_video2(occx, &pkt, rFrame, &got_picture);
                 if(ret < 0)
                     error("Encoding failed");
 
@@ -239,7 +238,7 @@ static void send_video(int fd, int codec_id, char *filename)
         av_init_packet( &pkt );
     }
 
-    av_read_pause( ifcx );
+    av_read_pause( in_st.ifcx );
     av_write_trailer( ofcx );
     avformat_free_context( ofcx );
 }
@@ -257,7 +256,7 @@ static AVStream *setup_output_context(int fd, AVFormatContext *ofcx, AVCodecCont
     ost->sample_aspect_ratio.den = occx->sample_aspect_ratio.den;
 
     // Assume r_frame_rate is accurate
-    ost->r_frame_rate = ist->r_frame_rate;
+    ost->r_frame_rate = (AVRational){30,1};
     ost->avg_frame_rate = ost->r_frame_rate;
     ost->time_base = av_inv_q( ost->r_frame_rate );
     ost->codec->time_base = ost->time_base;

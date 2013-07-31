@@ -2,6 +2,8 @@
 #define VIDEO_SERVER_H
 
 #include <stdint.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 
 typedef struct {
     uint8_t signature[4]; /* "PaVE" - used to identify the start of frame */
@@ -57,6 +59,22 @@ typedef struct {
 
     /* Padding to align on 64 bytes */
 } __attribute__ ((packed)) parrot_video_encapsulation_t;
+
+struct input_stream
+{
+    AVStream *ist;
+    AVFormatContext *ifcx;
+    AVCodecContext *iccx;
+    int video_stream_index;
+};
+
+typedef enum {
+    FRAME_TYPE_UNKNNOWN=0,
+    FRAME_TYPE_IDR_FRAME, /* headers followed by I-frame */
+    FRAME_TYPE_I_FRAME,
+    FRAME_TYPE_P_FRAME,
+    FRAME_TYPE_HEADERS
+}parrot_video_encapsulation_frametypes_t;
 
 void *video_listen(void*);
 

@@ -1,6 +1,7 @@
 /* user includes */
 #include "util/port_numbers.h"
 #include "util/error.h"
+#include "util/server_init.h"
 #include "navdata/navdata_server.h"
 
 /* Standard includes */
@@ -17,7 +18,8 @@
 
 void *navdata_listen(void *args)
 {
-    int listen_port = *(int*)args;
+    struct server_init *server_init = (struct server_init*)args;
+    int listen_port = server_init->port;
 
     struct sockaddr_in serv_addr;
 
