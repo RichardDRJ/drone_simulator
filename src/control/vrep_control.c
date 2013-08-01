@@ -10,6 +10,7 @@ void vrep_control_init(struct data_options *d, simxInt id)
 {
     client_id = id;
 
+    d->at_ref = vrep_at_ref;
     d->at_pcmd_mag = vrep_at_pcmd_mag;
     d->at_pcmd = vrep_at_pcmd;
 }

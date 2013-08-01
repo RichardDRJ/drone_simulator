@@ -23,6 +23,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+uint8_t flip_video = 0;
+
 static void send_video(int fd, int codec_id, struct data_options *dopts);
 static int write_packet(void *opaque, uint8_t *buf, int buf_size);
 
@@ -60,7 +62,7 @@ void *video_listen(void *args)
     return NULL;
 }
 
-parrot_video_encapsulation_t *create_frame_header(uint32_t payload_size, AVFrame *frame, uint32_t frame_number, uint64_t stream_byte_position, uint8_t sps, uint8_t pps)
+parrot_video_encapsulation_t *create_frame_header(uint32_t payload_size, AVFrame *frame, uint32_t frame_number, uint64_t stream_byte_position, uint8_t sps, uint8_t pps, uint8_t pkt_flags)
 {
     parrot_video_encapsulation_t *new_header = calloc(sizeof(parrot_video_encapsulation_t), 1);
 
@@ -87,6 +89,8 @@ parrot_video_encapsulation_t *create_frame_header(uint32_t payload_size, AVFrame
     new_header->timestamp = frame->pts;
 
     new_header->frame_type = frame->pict_type == AV_PICTURE_TYPE_P ? FRAME_TYPE_P_FRAME : FRAME_TYPE_I_FRAME;
+    new_header->frame_type = pkt_flags & AV_PKT_FLAG_KEY ? FRAME_TYPE_I_FRAME : FRAME_TYPE_P_FRAME;
+    printf("frame->type: %s\n", new_header->frame_type == FRAME_TYPE_P_FRAME ? "FRAME_TYPE_P_FRAME" : "FRAME_TYPE_I_FRAME");
 
     new_header->control = 0;
 
@@ -116,6 +120,13 @@ static int write_packet(void *opaque, uint8_t *buf, int buf_size)
 }
 
 static AVStream *setup_output_context(int fd, AVFormatContext *ofcx, AVCodecContext *iccx, AVStream *ist);
+
+void flip_frame(AVFrame* pFrame) { 
+    for (int i = 0; i < 4; i++) { 
+        pFrame->data[i] += pFrame->linesize[i] * (pFrame->height-1); 
+        pFrame->linesize[i] = -pFrame->linesize[i]; 
+    } 
+} 
 
 static void send_video(int fd, int codec_id, struct data_options *dopts)
 {
@@ -165,6 +176,7 @@ static void send_video(int fd, int codec_id, struct data_options *dopts)
 
     //av_opt_set(occx->priv_data, "preset", "ultrafast", 0);
     av_opt_set(occx->priv_data, "tune", "zerolatency", 0);
+    av_opt_set(occx->priv_data, "vprofile", "baseline", 0);
 
     if (avcodec_open2(occx, out_codec, NULL) < 0)
         error("Could not open codec");
@@ -182,13 +194,12 @@ static void send_video(int fd, int codec_id, struct data_options *dopts)
 
     int ix = 0;
 
-    AVFrame *frame = avcodec_alloc_frame();
-
+    AVFrame *frame;
     AVFrame *rFrame = avcodec_alloc_frame();
 
     /*int num_bytes = avpicture_get_size(occx->pix_fmt, occx->width, occx->height);
-    uint8_t* rFrame_buffer = av_malloc(num_bytes*sizeof(uint8_t));
-    avpicture_fill((AVPicture*)rFrame, rFrame_buffer, occx->pix_fmt, occx->width, occx->height);*/
+      uint8_t* rFrame_buffer = av_malloc(num_bytes*sizeof(uint8_t));
+      avpicture_fill((AVPicture*)rFrame, rFrame_buffer, occx->pix_fmt, occx->width, occx->height);*/
 
     int w = in_st.iccx->width;
     int h = in_st.iccx->height;
@@ -204,6 +215,8 @@ static void send_video(int fd, int codec_id, struct data_options *dopts)
         if ( pkt.stream_index == in_st.video_stream_index ) { //packet is video 
             int got_picture;
 
+            frame = avcodec_alloc_frame();
+
             avcodec_decode_video2(in_st.iccx, frame, &got_picture, &pkt);
 
             if(got_picture)
@@ -214,7 +227,12 @@ static void send_video(int fd, int codec_id, struct data_options *dopts)
                 if(img_convert_ctx == NULL)
                     error("Cannot initialize the conversion context");
 
+                if(flip_video)
+                    flip_frame(frame);
+
                 sws_scale(img_convert_ctx, (const uint8_t* const*)frame->data, frame->linesize, 0, in_st.iccx->height, rFrame->data, rFrame->linesize);
+
+                sws_freeContext(img_convert_ctx);
 
                 av_free_packet( &pkt );
                 av_init_packet(&pkt);
@@ -226,11 +244,14 @@ static void send_video(int fd, int codec_id, struct data_options *dopts)
 
                 if(got_picture)
                 {
-                    parrot_video_encapsulation_t *p = create_frame_header(pkt.size, frame, ix, pkt.pos, 0, 0);
+                    parrot_video_encapsulation_t *p = create_frame_header(pkt.size, frame, ix, pkt.pos, 0, 0, pkt.flags);
                     write(fd, p, sizeof(parrot_video_encapsulation_t));
                     av_write_frame( ofcx, &pkt );
+                    free(p);
                 }
             }
+            
+            avcodec_free_frame(&frame);
 
             ++ix;
         }
@@ -240,6 +261,14 @@ static void send_video(int fd, int codec_id, struct data_options *dopts)
 
     av_read_pause( in_st.ifcx );
     av_write_trailer( ofcx );
+
+    avcodec_close( occx );
+
+    for (int i = 0; i < ofcx->nb_streams; i++) {
+        avcodec_close(ofcx->streams[i]->codec);
+        av_freep(&ofcx->streams[i]);
+    }
+
     avformat_free_context( ofcx );
 }
 

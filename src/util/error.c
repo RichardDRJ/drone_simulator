@@ -11,7 +11,10 @@ void error(char *msg, ...)
     va_list args;
     va_start(args, msg);
     vfprintf(stderr, msg, args);
-    printf(": %s\n", strerror(errno));
+    if(errno)
+        printf(": %s\n", strerror(errno));
+    else
+        printf("\n");
     va_end(args);
     exit(1);
 }

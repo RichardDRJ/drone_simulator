@@ -98,6 +98,8 @@ void ftp_size_handler(void *data)
 
         write(d->client_sockfd, ret_message, message_size);
     }
+
+    free(args);
 }
 
 void ftp_type_handler(void *data)
@@ -112,6 +114,8 @@ void ftp_type_handler(void *data)
     size_t message_size = strlen(MSG_OPERATION_SUCCESS);
 
     write(d->client_sockfd, MSG_OPERATION_SUCCESS, message_size);
+
+    free(args);
 }
 
 void ftp_user_handler(void *data)
@@ -127,6 +131,8 @@ void ftp_user_handler(void *data)
         d->current_username = "anonymous";
         write(d->client_sockfd, MSG_LOGIN_SUCCESS, strlen(MSG_LOGIN_SUCCESS));
     }
+
+    free(args);
 }
 
 void ftp_pasv_handler(void *data)
@@ -191,4 +197,6 @@ void ftp_retr_handler(void *data)
     int bytes_written = write(d->client_sockfd, MSG_RETR_SUCCESS, strlen(MSG_RETR_SUCCESS));
     if (bytes_written < 0)
         error("ERROR writing to socket");
+
+    free(args);
 }

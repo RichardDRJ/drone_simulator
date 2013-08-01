@@ -9,8 +9,11 @@
 static simxInt client_id;
 static simxInt sensor_handle;
 
+extern uint8_t flip_video;
+
 void vrep_video_init(struct data_options *d, simxInt id)
 {
+    flip_video = 1;
     client_id = id;
     d->open_video_stream = open_vrep_stream;
     simxInt ret = simxGetIntegerSignal(id, "QCFrontSensor", &sensor_handle, simx_opmode_oneshot_wait);
@@ -28,63 +31,45 @@ static int read_vrep_stream(void *opaque, uint8_t *buf, int buf_size)
     static int size_left = 0;
 
     simxInt resolution[2] = {0,0};
-//    simxInt opmode;
+    //    simxInt opmode;
     simxChar *image;
 
     if(!size_left)
     {
-        /*
-        if(init == 1)
-            opmode = simx_opmode_streaming;
-        else
-            opmode = simx_opmode_buffer;
-
-        int ret = simxGetVisionSensorImage(client_id, sensor_handle, resolution, &image, 0, opmode);
-        if(ret < 0)
-            error("Could not read vision sensor");
-
-        if(init == 1)
-        {
-            opmode = simx_opmode_oneshot_wait;
-
-            ret = simxGetVisionSensorImage(client_id, sensor_handle, resolution, &image, 0, opmode);
-            if(ret < 0)
-                error("Could not read vision sensor");
-
-            init = 0;
-        }*/
-
         int ret;
 
-        if(init)
+        do
         {
-            ret = simxGetVisionSensorImage(client_id, sensor_handle, resolution, &image, 0, simx_opmode_oneshot_wait);
-            if(ret < 0)
-                error("Could not read from vision sensor");
-
-            ret = simxGetVisionSensorImage(client_id, sensor_handle, resolution, &image, 0, simx_opmode_streaming+300);
-            if(ret < 0)
-                error("Could not start streaming from vision sensor");
-
-            init = 0;
-        }
-        else
-        {
-            printf("line %d\n", __LINE__);
-            do
+            if(init)
             {
-                ret = simxGetVisionSensorImage(client_id, sensor_handle, resolution, &image, 0, simx_opmode_buffer);
+                ret = simxGetVisionSensorImage(client_id, sensor_handle, resolution, &image, 0, simx_opmode_oneshot_wait);
+                if(ret < 0)
+                    error("Could not read from vision sensor");
+
+                ret = simxGetVisionSensorImage(client_id, sensor_handle, resolution, &image, 0, simx_opmode_streaming);
+                if(ret < 0)
+                    error("Could not start streaming from vision sensor");
+
+                init = 0;
             }
-            while(ret == simx_error_novalue_flag);
+            else
+            {
+                printf("line %d\n", __LINE__);
+                do
+                {
+                    ret = simxGetVisionSensorImage(client_id, sensor_handle, resolution, &image, 0, simx_opmode_buffer);
+                }
+                while(ret == simx_error_novalue_flag);
 
-            if(ret < 0)
-                error("Could not read from vision sensor");
-        }
-        
-        printf("line %d\n", __LINE__);
+                if(ret != simx_error_noerror)
+                    error("Could not read from vision sensor");
+            }
 
-        size_left = resolution[0] * resolution[1] * 3;
-//        init = !(size_left == 0);
+            size_left = resolution[0] * resolution[1] * 3;
+
+        } while(size_left < 0);
+
+        //        init = !(size_left == 0);
 
         printf("size_left: %d\n", size_left);
         printf("line %d\n", __LINE__);
@@ -114,9 +99,6 @@ static int read_vrep_stream(void *opaque, uint8_t *buf, int buf_size)
         tmp_image_ptr += copy_size;
 
     size_left -= copy_size;
-
-    if(!size_left)
-        free(tmp_image);
 
     return copy_size;
 }

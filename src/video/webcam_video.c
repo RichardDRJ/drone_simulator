@@ -42,7 +42,9 @@ void open_webcam_stream(struct input_stream *in_stream)
         error("Could not open codec");
 }
 
-void webcam_video_init(struct data_options *d)
+void webcam_video_init(struct data_options *d, char *file)
 {
+    if(file)
+        filename = file;
     d->open_video_stream = open_webcam_stream;
 }
