@@ -3,6 +3,7 @@
 #include "util/error.h"
 #include "util/server_init.h"
 #include "navdata/navdata_server.h"
+#include "navdata/navdata_common.h"
 
 /* Standard includes */
 #include <string.h>
@@ -35,16 +36,39 @@ void *navdata_listen(void *args)
     listen(sockfd, 5);
 
     char current_char;
+    int8_t bytes_read = recv(sockfd, &current_char, 1, 0);
+
+    if(bytes_read < 1)
+    {
+        error("ERROR reading from socket");
+        return NULL;
+    }
+
+    uint32_t sequence = 0;
 
     while(1)
     {
-        int8_t bytes_read = recv(sockfd, &current_char, 1, 0);
+        int navdata_size = sizeof(navdata_t) + sizeof(navdata_demo_t) + sizeof(navdata_cks_t) - sizeof(navdata_option_t);
+        navdata_t *navdata = malloc(navdata_size);
 
-        if(bytes_read < 1)
-        {
-            error("ERROR reading from socket");
-            return NULL;
-        }
+        navdata->header = NAVDATA_HEADER;
+        navdata->ardrone_state = 0;
+        navdata->sequence = sequence++;
+
+        /*navdata->ctrl_state = 0;
+        navdata->vbat_flying_percentage = 0xFFFFFFFF;
+        navdata->theta = 0;
+        navdata->phi = 0;
+        navdata->psi = 0;
+        navdata->altitude = 0;
+
+        navdata->vx = 0;
+        navdata->vy = 0;
+        navdata->vz = 0;
+
+        navdata->num_frames = 0;*/
+
+        write(sockfd, navdata, navdata_size);
     }
 
     return NULL;

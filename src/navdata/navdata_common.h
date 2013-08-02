@@ -12,7 +12,7 @@
 #include <float.h>
 #include <inttypes.h>
 
-typedef bool_t int32_t
+typedef int32_t bool_t; 
 
 #if defined(_MSC_VER)
 	#define _ATTRIBUTE_PACKED_
@@ -21,6 +21,46 @@ typedef bool_t int32_t
 #else
 	#define _ATTRIBUTE_PACKED_  __attribute__ ((packed))
 #endif
+
+typedef enum {
+  ARDRONE_FLY_MASK            = 1U << 0,  /*!< FLY MASK : (0) ardrone is landed, (1) ardrone is flying */
+  ARDRONE_VIDEO_MASK          = 1U << 1,  /*!< VIDEO MASK : (0) video disable, (1) video enable */
+  ARDRONE_VISION_MASK         = 1U << 2,  /*!< VISION MASK : (0) vision disable, (1) vision enable */
+  ARDRONE_CONTROL_MASK        = 1U << 3,  /*!< CONTROL ALGO : (0) euler angles control, (1) angular speed control */
+  ARDRONE_ALTITUDE_MASK       = 1U << 4,  /*!< ALTITUDE CONTROL ALGO : (0) altitude control inactive (1) altitude control active */
+  ARDRONE_USER_FEEDBACK_START = 1U << 5,  /*!< USER feedback : Start button state */
+  ARDRONE_COMMAND_MASK        = 1U << 6,  /*!< Control command ACK : (0) None, (1) one received */
+  ARDRONE_CAMERA_MASK         = 1U << 7,  /*!< CAMERA MASK : (0) camera not ready, (1) Camera ready */
+  ARDRONE_TRAVELLING_MASK     = 1U << 8,  /*!< Travelling mask : (0) disable, (1) enable */
+  ARDRONE_USB_MASK            = 1U << 9,  /*!< USB key : (0) usb key not ready, (1) usb key ready */
+  ARDRONE_NAVDATA_DEMO_MASK   = 1U << 10, /*!< Navdata demo : (0) All navdata, (1) only navdata demo */
+  ARDRONE_NAVDATA_BOOTSTRAP   = 1U << 11, /*!< Navdata bootstrap : (0) options sent in all or demo mode, (1) no navdata options sent */
+  ARDRONE_MOTORS_MASK  	      = 1U << 12, /*!< Motors status : (0) Ok, (1) Motors problem */
+  ARDRONE_COM_LOST_MASK       = 1U << 13, /*!< Communication Lost : (1) com problem, (0) Com is ok */
+  ARDRONE_SOFTWARE_FAULT      = 1U << 14, /*!< Software fault detected - user should land as quick as possible (1) */
+  ARDRONE_VBAT_LOW            = 1U << 15, /*!< VBat low : (1) too low, (0) Ok */
+  ARDRONE_USER_EL             = 1U << 16, /*!< User Emergency Landing : (1) User EL is ON, (0) User EL is OFF*/
+  ARDRONE_TIMER_ELAPSED       = 1U << 17, /*!< Timer elapsed : (1) elapsed, (0) not elapsed */
+  ARDRONE_MAGNETO_NEEDS_CALIB = 1U << 18, /*!< Magnetometer calibration state : (0) Ok, no calibration needed, (1) not ok, calibration needed */
+  ARDRONE_ANGLES_OUT_OF_RANGE = 1U << 19, /*!< Angles : (0) Ok, (1) out of range */
+  ARDRONE_WIND_MASK 		  = 1U << 20, /*!< WIND MASK: (0) ok, (1) Too much wind */
+  ARDRONE_ULTRASOUND_MASK     = 1U << 21, /*!< Ultrasonic sensor : (0) Ok, (1) deaf */
+  ARDRONE_CUTOUT_MASK         = 1U << 22, /*!< Cutout system detection : (0) Not detected, (1) detected */
+  ARDRONE_PIC_VERSION_MASK    = 1U << 23, /*!< PIC Version number OK : (0) a bad version number, (1) version number is OK */
+  ARDRONE_ATCODEC_THREAD_ON   = 1U << 24, /*!< ATCodec thread ON : (0) thread OFF (1) thread ON */
+  ARDRONE_NAVDATA_THREAD_ON   = 1U << 25, /*!< Navdata thread ON : (0) thread OFF (1) thread ON */
+  ARDRONE_VIDEO_THREAD_ON     = 1U << 26, /*!< Video thread ON : (0) thread OFF (1) thread ON */
+  ARDRONE_ACQ_THREAD_ON       = 1U << 27, /*!< Acquisition thread ON : (0) thread OFF (1) thread ON */
+  ARDRONE_CTRL_WATCHDOG_MASK  = 1U << 28, /*!< CTRL watchdog : (1) delay in control execution (> 5ms), (0) control is well scheduled */
+  ARDRONE_ADC_WATCHDOG_MASK   = 1U << 29, /*!< ADC Watchdog : (1) delay in uart2 dsr (> 5ms), (0) uart2 is good */
+  ARDRONE_COM_WATCHDOG_MASK   = 1U << 30, /*!< Communication Watchdog : (1) com problem, (0) Com is ok */
+  #if defined(__ARMCC_VERSION)
+  ARDRONE_EMERGENCY_MASK      = (int)0x80000000  /*!< Emergency landing : (0) no emergency, (1) emergency */
+  #else
+  ARDRONE_EMERGENCY_MASK      = 1U << 31  /*!< Emergency landing : (0) no emergency, (1) emergency */
+  #endif
+} def_ardrone_state_mask_t;
+
 
 // Define constants for gyrometers handling
 typedef enum {
@@ -41,12 +81,12 @@ typedef enum {
 
 /**
  * \struct _velocities_t
- * \brief Velocities in float32_t format
+ * \brief Velocities in uint32_t format 
  */
 typedef struct _velocities_t {
-  float32_t x;
-  float32_t y;
-  float32_t z;
+  uint32_t x; /* floating point value */
+  uint32_t y; /* floating point value */
+  uint32_t z; /* floating point value */
 } velocities_t;
 
 // Default control loops gains TODO Put these values in flash memory
@@ -181,7 +221,7 @@ typedef struct _velocities_t {
 #define CTRL_DEFAULT_NUM_HOVER_B_KI2_SHELL  8192
 #define CTRL_DEFAULT_NUM_HOVER_B_KD2_SHELL  8000
 /* Timeout for mayday maneuvers*/
-static const int32_t MAYDAY_TIMEOUT[ARDRONE_NB_ANIM_MAYDAY] = {
+static const int32_t MAYDAY_TIMEOUT[] = {
     1000,  // ARDRONE_ANIM_PHI_M30_DEG
     1000,  // ARDRONE_ANIM_PHI_30_DEG
     1000,  // ARDRONE_ANIM_THETA_M30_DEG
@@ -226,7 +266,7 @@ static const int32_t MAYDAY_TIMEOUT[ARDRONE_NB_ANIM_MAYDAY] = {
 #define NAVDATA_OPTION_CKS(STRUCTURE,NAME,TAG)   NAVDATA_NUM_TAGS, TAG = 0xFFFF
 
 typedef enum _navdata_tag_t {
-	#include <navdata_keys.h>
+	#include "navdata_keys.h"
 } navdata_tag_t;
 
 #define NAVDATA_OPTION_MASK(option) ( 1 << (option) )
@@ -236,12 +276,7 @@ typedef enum _navdata_tag_t {
 typedef struct _navdata_option_t {
   uint16_t  tag;
   uint16_t  size;
-#if defined _MSC_VER || defined (__ARMCC_VERSION)
-  /* Do not use flexible arrays (C99 feature) with these compilers */
   uint8_t   data[1];
-#else
-  uint8_t   data[];
-#endif
 } navdata_option_t;
 
 
@@ -274,15 +309,15 @@ typedef struct _navdata_demo_t {
   uint32_t    ctrl_state;             /*!< Flying state (landed, flying, hovering, etc.) defined in CTRL_STATES enum. */
   uint32_t    vbat_flying_percentage; /*!< battery voltage filtered (mV) */
 
-  float32_t   theta;                  /*!< UAV's pitch in milli-degrees */
-  float32_t   phi;                    /*!< UAV's roll  in milli-degrees */
-  float32_t   psi;                    /*!< UAV's yaw   in milli-degrees */
+  uint32_t   theta;                  /*!< UAV's pitch in milli-degrees */ /* floating point value */
+  uint32_t   phi;                    /*!< UAV's roll  in milli-degrees */ /* floating point value */
+  uint32_t   psi;                    /*!< UAV's yaw   in milli-degrees */ /* floating point value */
 
   int32_t     altitude;               /*!< UAV's altitude in centimeters */
 
-  float32_t   vx;                     /*!< UAV's estimated linear velocity */
-  float32_t   vy;                     /*!< UAV's estimated linear velocity */
-  float32_t   vz;                     /*!< UAV's estimated linear velocity */
+  uint32_t   vx;                     /*!< UAV's estimated linear velocity */ /* floating point value */
+  uint32_t   vy;                     /*!< UAV's estimated linear velocity */ /* floating point value */
+  uint32_t   vz;                     /*!< UAV's estimated linear velocity */ /* floating point value */
 
   uint32_t    num_frames;			  /*!< streamed frame index */ // Not used -> To integrate in video stage.
 
@@ -377,14 +412,14 @@ typedef struct _navdata_magneto_t {
   uint32_t magneto_raw[3];       // magneto in the body frame, in mG
   uint32_t magneto_rectified[3];
   uint32_t magneto_offset[3];
-  float32_t 	heading_unwrapped;
-  float32_t 	heading_gyro_unwrapped;
-  float32_t 	heading_fusion_unwrapped;
+  uint32_t 	heading_unwrapped; /* floating point value */
+  uint32_t 	heading_gyro_unwrapped; /* floating point value */
+  uint32_t 	heading_fusion_unwrapped; /* floating point value */
   char 			magneto_calibration_ok;
   uint32_t      magneto_state;
-  float32_t 	magneto_radius;
-  float32_t     error_mean;
-  float32_t     error_var;
+  uint32_t 	magneto_radius; /* floating point value */
+  uint32_t     error_mean; /* floating point value */
+  uint32_t     error_var; /* floating point value */
 
 }_ATTRIBUTE_PACKED_ navdata_magneto_t;
 
@@ -392,40 +427,40 @@ typedef struct _navdata_wind_speed_t {
   uint16_t   tag;
   uint16_t   size;
 
-  float32_t wind_speed;			// estimated wind speed [m/s]
-  float32_t wind_angle;			// estimated wind direction in North-East frame [rad] e.g. if wind_angle is pi/4, wind is from South-West to North-East
-  float32_t wind_compensation_theta;
-  float32_t wind_compensation_phi;
-  float32_t state_x1;
-  float32_t state_x2;
-  float32_t state_x3;
-  float32_t state_x4;
-  float32_t state_x5;
-  float32_t state_x6;
-  float32_t magneto_debug1;
-  float32_t magneto_debug2;
-  float32_t magneto_debug3;
+  uint32_t wind_speed;			// estimated wind speed [m/s] /* floating point value */
+  uint32_t wind_angle;			// estimated wind direction in North-East frame [rad] e.g. if wind_angle is pi/4, wind is from South-West to North-East /* floating point value */
+  uint32_t wind_compensation_theta; /* floating point value */
+  uint32_t wind_compensation_phi; /* floating point value */
+  uint32_t state_x1; /* floating point value */
+  uint32_t state_x2; /* floating point value */
+  uint32_t state_x3; /* floating point value */
+  uint32_t state_x4; /* floating point value */
+  uint32_t state_x5; /* floating point value */
+  uint32_t state_x6; /* floating point value */
+  uint32_t magneto_debug1; /* floating point value */
+  uint32_t magneto_debug2; /* floating point value */
+  uint32_t magneto_debug3; /* floating point value */
 }_ATTRIBUTE_PACKED_ navdata_wind_speed_t;
 
 typedef struct _navdata_kalman_pressure_t{
   uint16_t   tag;
   uint16_t   size;
 
-  float32_t offset_pressure;
-  float32_t est_z;
-  float32_t est_zdot;
-  float32_t est_bias_PWM;
-  float32_t est_biais_pression;
-  float32_t offset_US;
-  float32_t prediction_US;
-  float32_t cov_alt;
-  float32_t cov_PWM;
-  float32_t cov_vitesse;
+  uint32_t offset_pressure; /* floating point value */
+  uint32_t est_z; /* floating point value */
+  uint32_t est_zdot; /* floating point value */
+  uint32_t est_bias_PWM; /* floating point value */
+  uint32_t est_biais_pression; /* floating point value */
+  uint32_t offset_US; /* floating point value */
+  uint32_t prediction_US; /* floating point value */
+  uint32_t cov_alt; /* floating point value */
+  uint32_t cov_PWM; /* floating point value */
+  uint32_t cov_vitesse; /* floating point value */
   bool_t    bool_effet_sol;
-  float32_t somme_inno;
+  uint32_t somme_inno; /* floating point value */
   bool_t    flag_rejet_US;
-  float32_t u_multisinus;
-  float32_t gaz_altitude;
+  uint32_t u_multisinus; /* floating point value */
+  uint32_t gaz_altitude; /* floating point value */
   bool_t    Flag_multisinus;
   bool_t    Flag_multisinus_debut;
 }_ATTRIBUTE_PACKED_ navdata_kalman_pressure_t;
@@ -436,7 +471,7 @@ uint16_t   tag;
 uint16_t   size;
 
 	int32_t vzimmuLSB;
-	float32_t vzfind;
+	uint32_t vzfind; /* floating point value */
 
 }_ATTRIBUTE_PACKED_ navdata_zimmu_3000_t;
 
@@ -444,10 +479,10 @@ typedef struct _navdata_phys_measures_t {
   uint16_t   tag;
   uint16_t   size;
 
-  float32_t   accs_temp;
+  uint32_t   accs_temp; /* floating point value */
   uint16_t    gyro_temp;
-  float32_t   phys_accs[NB_ACCS];
-  float32_t   phys_gyros[NB_GYROS];
+  uint32_t   phys_accs[NB_ACCS]; /* floating point value */
+  uint32_t   phys_gyros[NB_GYROS]; /* floating point value */
   uint32_t    alim3V3;              // 3.3volt alim [LSB]
   uint32_t    vrefEpson;            // ref volt Epson gyro [LSB]
   uint32_t    vrefIDG;              // ref volt IDG gyro [LSB]
@@ -458,7 +493,7 @@ typedef struct _navdata_gyros_offsets_t {
   uint16_t   tag;
   uint16_t   size;
 
-  float32_t offset_g[NB_GYROS];
+  uint32_t offset_g[NB_GYROS]; /* floating point value */
 }_ATTRIBUTE_PACKED_ navdata_gyros_offsets_t;
 
 
@@ -466,8 +501,8 @@ typedef struct _navdata_euler_angles_t {
   uint16_t   tag;
   uint16_t   size;
 
-  float32_t   theta_a;
-  float32_t   phi_a;
+  uint32_t   theta_a; /* floating point value */
+  uint32_t   phi_a; /* floating point value */
 }_ATTRIBUTE_PACKED_ navdata_euler_angles_t;
 
 
@@ -484,20 +519,20 @@ typedef struct _navdata_references_t {
   int32_t   ref_yaw;
   int32_t   ref_psi;
 
-  float32_t vx_ref;
-	float32_t vy_ref;
-	float32_t theta_mod;
-	float32_t phi_mod;
+  uint32_t vx_ref; /* floating point value */
+	uint32_t vy_ref; /* floating point value */
+	uint32_t theta_mod; /* floating point value */
+	uint32_t phi_mod; /* floating point value */
 
-	float32_t k_v_x;
-	float32_t k_v_y;
+	uint32_t k_v_x; /* floating point value */
+	uint32_t k_v_y; /* floating point value */
 	uint32_t  k_mode;
 
-	float32_t ui_time;
-	float32_t ui_theta;
-	float32_t ui_phi;
-	float32_t ui_psi;
-	float32_t ui_psi_accuracy;
+	uint32_t ui_time; /* floating point value */
+	uint32_t ui_theta; /* floating point value */
+	uint32_t ui_phi; /* floating point value */
+	uint32_t ui_psi; /* floating point value */
+	uint32_t ui_psi_accuracy; /* floating point value */
 	int32_t ui_seq;
 
 }_ATTRIBUTE_PACKED_ navdata_references_t;
@@ -507,9 +542,9 @@ typedef struct _navdata_trims_t {
   uint16_t   tag;
   uint16_t   size;
 
-  float32_t angular_rates_trim_r;
-  float32_t euler_angles_trim_theta;
-  float32_t euler_angles_trim_phi;
+  uint32_t angular_rates_trim_r; /* floating point value */
+  uint32_t euler_angles_trim_theta; /* floating point value */
+  uint32_t euler_angles_trim_phi; /* floating point value */
 }_ATTRIBUTE_PACKED_ navdata_trims_t;
 
 typedef struct _navdata_rc_references_t {
@@ -536,25 +571,25 @@ typedef struct _navdata_pwm_t {
   uint8_t	  sat_motor2;
   uint8_t	  sat_motor3;
   uint8_t	  sat_motor4;
-  float32_t   gaz_feed_forward;
-  float32_t   gaz_altitude;
-  float32_t   altitude_integral;
-  float32_t   vz_ref;
+  uint32_t   gaz_feed_forward; /* floating point value */
+  uint32_t   gaz_altitude; /* floating point value */
+  uint32_t   altitude_integral; /* floating point value */
+  uint32_t   vz_ref; /* floating point value */
   int32_t     u_pitch;
   int32_t     u_roll;
   int32_t     u_yaw;
-  float32_t   yaw_u_I;
+  uint32_t   yaw_u_I; /* floating point value */
   int32_t     u_pitch_planif;
   int32_t     u_roll_planif;
   int32_t     u_yaw_planif;
-  float32_t   u_gaz_planif;
+  uint32_t   u_gaz_planif; /* floating point value */
   uint16_t    current_motor1;
   uint16_t    current_motor2;
   uint16_t    current_motor3;
   uint16_t    current_motor4;
 	//WARNING: new navdata (FC 26/07/2011)
-	float32_t 	altitude_prop;
-	float32_t 	altitude_der;
+	uint32_t 	altitude_prop; /* floating point value */
+	uint32_t 	altitude_der; /* floating point value */
 }_ATTRIBUTE_PACKED_ navdata_pwm_t;
 
 
@@ -563,12 +598,12 @@ typedef struct _navdata_altitude_t {
   uint16_t   size;
 
   int32_t   altitude_vision;
-  float32_t altitude_vz;
+  uint32_t altitude_vz; /* floating point value */
   int32_t   altitude_ref;
   int32_t   altitude_raw;
 
-	float32_t		obs_accZ;
-	float32_t 	obs_alt;
+	uint32_t	obs_accZ; /*floating point value */
+	uint32_t 	obs_alt; /* floating point value */
 	uint32_t obs_x[3];
 	uint32_t 		obs_state;
 	uint32_t est_vb[2];
@@ -581,9 +616,9 @@ typedef struct _navdata_vision_raw_t {
   uint16_t   tag;
   uint16_t   size;
 
-  float32_t vision_tx_raw;
-  float32_t vision_ty_raw;
-  float32_t vision_tz_raw;
+  uint32_t vision_tx_raw; /* floating point value */
+  uint32_t vision_ty_raw; /* floating point value */
+  uint32_t vision_tz_raw; /* floating point value */
 }_ATTRIBUTE_PACKED_ navdata_vision_raw_t;
 
 
@@ -593,79 +628,28 @@ typedef struct _navdata_vision_t {
 
   uint32_t   vision_state;
   int32_t    vision_misc;
-  float32_t  vision_phi_trim;
-  float32_t  vision_phi_ref_prop;
-  float32_t  vision_theta_trim;
-  float32_t  vision_theta_ref_prop;
+  uint32_t  vision_phi_trim; /* floating point value */
+  uint32_t  vision_phi_ref_prop; /* floating point value */
+  uint32_t  vision_theta_trim; /* floating point value */
+  uint32_t  vision_theta_ref_prop; /* floating point value */
 
   int32_t    new_raw_picture;
-  float32_t  theta_capture;
-  float32_t  phi_capture;
-  float32_t  psi_capture;
+  uint32_t  theta_capture; /* floating point value */
+  uint32_t  phi_capture; /* floating point value */
+  uint32_t  psi_capture; /* floating point value */
   int32_t    altitude_capture;
   uint32_t   time_capture;     // time in TSECDEC format (see config.h)
   velocities_t body_v;
 
-  float32_t  delta_phi;
-  float32_t  delta_theta;
-  float32_t  delta_psi;
+  uint32_t  delta_phi; /* floating point value */
+  uint32_t  delta_theta; /* floating point value */
+  uint32_t  delta_psi; /* floating point value */
 
 	uint32_t  gold_defined;
 	uint32_t  gold_reset;
-	float32_t gold_x;
-	float32_t gold_y;
+	uint32_t gold_x; /* floating point value */
+	uint32_t gold_y; /* floating point value */
 }_ATTRIBUTE_PACKED_ navdata_vision_t;
-
-
-typedef struct _navdata_vision_perf_t {
-  uint16_t   tag;
-  uint16_t   size;
-
-  // +44 bytes
-  float32_t  time_szo;
-  float32_t  time_corners;
-  float32_t  time_compute;
-  float32_t  time_tracking;
-  float32_t  time_trans;
-  float32_t  time_update;
-	float32_t  time_custom[NAVDATA_MAX_CUSTOM_TIME_SAVE];
-}_ATTRIBUTE_PACKED_ navdata_vision_perf_t;
-
-
-typedef struct _navdata_trackers_send_t {
-  uint16_t   tag;
-  uint16_t   size;
-
-  int32_t locked[DEFAULT_NB_TRACKERS_WIDTH * DEFAULT_NB_TRACKERS_HEIGHT];
-  screen_point_t point[DEFAULT_NB_TRACKERS_WIDTH * DEFAULT_NB_TRACKERS_HEIGHT];
-}_ATTRIBUTE_PACKED_ navdata_trackers_send_t;
-
-
-typedef struct _navdata_vision_detect_t {
-	/* !! Change the function 'navdata_server_reset_vision_detect()' if this structure is modified !! */
-  uint16_t   tag;
-  uint16_t   size;
-
-  uint32_t   nb_detected;
-  uint32_t   type[NB_NAVDATA_DETECTION_RESULTS];
-  uint32_t   xc[NB_NAVDATA_DETECTION_RESULTS];
-  uint32_t   yc[NB_NAVDATA_DETECTION_RESULTS];
-  uint32_t   width[NB_NAVDATA_DETECTION_RESULTS];
-  uint32_t   height[NB_NAVDATA_DETECTION_RESULTS];
-  uint32_t   dist[NB_NAVDATA_DETECTION_RESULTS];
-  float32_t  orientation_angle[NB_NAVDATA_DETECTION_RESULTS];
-  matrix33_t rotation[NB_NAVDATA_DETECTION_RESULTS];
-  vector31_t translation[NB_NAVDATA_DETECTION_RESULTS];
-  uint32_t   camera_source[NB_NAVDATA_DETECTION_RESULTS];
-}_ATTRIBUTE_PACKED_ navdata_vision_detect_t;
-
-typedef struct _navdata_vision_of_t {
-  uint16_t   tag;
-  uint16_t   size;
-
-  float32_t   of_dx[5];
-  float32_t   of_dy[5];
-}_ATTRIBUTE_PACKED_ navdata_vision_of_t;
 
 
 typedef struct _navdata_watchdog_t {
@@ -693,7 +677,7 @@ typedef struct _navdata_video_stream_t {
   uint32_t	frame_number;	// frame index
   uint32_t	atcmd_ref_seq;  // atmcd ref sequence number
   uint32_t	atcmd_mean_ref_gap;	// mean time between two consecutive atcmd_ref (ms)
-  float32_t atcmd_var_ref_gap;
+  uint32_t atcmd_var_ref_gap; /* floating point value */
   uint32_t	atcmd_ref_quality; // estimator of atcmd link quality
 
   // drone2
