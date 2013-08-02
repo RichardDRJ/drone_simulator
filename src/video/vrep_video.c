@@ -38,6 +38,12 @@ static int read_vrep_stream(void *opaque, uint8_t *buf, int buf_size)
     {
         int ret;
 
+        if(tmp_image)
+        {
+            free(tmp_image);
+            tmp_image = NULL;
+        }
+
         do
         {
             if(init)
@@ -67,7 +73,7 @@ static int read_vrep_stream(void *opaque, uint8_t *buf, int buf_size)
 
             size_left = resolution[0] * resolution[1] * 3;
 
-        } while(size_left < 0);
+        } while(resolution[0] < 0 || resolution[1] < 0);
 
         //        init = !(size_left == 0);
 
@@ -76,10 +82,9 @@ static int read_vrep_stream(void *opaque, uint8_t *buf, int buf_size)
 
         if(!tmp_image)
         {
-            tmp_image = malloc(3 * resolution[0] * resolution[1]);
+            tmp_image = malloc(size_left);
             tmp_image_ptr = tmp_image;
         }
-        printf("line %d\n", __LINE__);
 
         memcpy(tmp_image, image, size_left);
         printf("line %d\n", __LINE__);
