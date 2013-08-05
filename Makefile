@@ -1,4 +1,4 @@
-LIBMODS	:= vrep
+LIBMODS	:= vrep libav
 MODULES	:= ftp data_structures util video navdata control $(addprefix libs/,$(LIBMODS))
 SRCDIR	:= src $(addprefix src/,$(MODULES))
 BINDIR	:= bin
@@ -12,7 +12,6 @@ FFMPEG_LIBS=    libavdevice                        \
 				libavformat                        \
 				libavfilter                        \
 				libavcodec                         \
-				libswresample                      \
 				libswscale                         \
 				libavutil
 
@@ -20,12 +19,12 @@ vpath $(SRCDIR)
 
 CC		= gcc
 CFLAGS	= -Wall -pedantic -Werror -extra -std=gnu99 -g $(shell pkg-config --cflags $(FFMPEG_LIBS))
-LIBS	= -lpthread $(shell pkg-config --libs $(FFMPEG_LIBS))
+LIBS	= -lpthread $(addprefix -L,$(BINMODS)) $(shell pkg-config --libs-only-l $(FFMPEG_LIBS))
 LDFLAGS	= 
 DEFS	= -DMAX_EXT_API_CONNECTIONS=255 -DNON_MATLAB_PARSING
 INCLUDES	= -Isrc
 
-.PHONY: all clean
+.PHONY: all clean libav
 
 all: $(BINMODS) $(TARGET)
 
@@ -38,7 +37,11 @@ $(TARGET): $(OBJECTS)
 $(BINDIR)/%.o: src/%.c
 	$(CC) $(CFLAGS) $(LDFLAGS) $(INCLUDES) $(DEFS) -c $< -o $@
 
-$(SRCS): $(HEADERS)
+$(SRCS): libav $(HEADERS)
+
+libav:
+	@echo "Building libav..."
+	@cd libav-9.8 && ./configure --enable-gpl --enable-libx264 --enable-libxvid --enable-version3 --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libmp3lame --enable-libspeex --enable-libvorbis --enable-libtheora --enable-libvpx --enable-libopenjpeg --enable-libfreetype --enable-doc --enable-shared --disable-libopenjpeg --disable-libspeex --disable-programs --disable-doc  --incdir=../src/libs/libav/ --bindir=../bin/libs/libav/ --bindir=../bin/libs/libav/presets && make && make install
 
 clean:
 	-rm -f $(BINDIR)/*~ $(addsuffix /*.o,$(BINMODS)) $(BINDIR)/*.o $(TARGET)
