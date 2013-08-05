@@ -9,6 +9,7 @@
 #include "control/control_server.h"
 #include "control/vrep_control.h"
 #include "navdata/navdata_server.h"
+#include "control/print_control.h"
 
 /* V-rep includes */
 #include "libs/vrep/extApi.h"
@@ -26,7 +27,7 @@ static void usage(char *pname)
             "\t-h\t\tPrint this help text.\n"\
             "\t-v\t\tGet video stream from v-rep (requires v-rep to be running).\n"\
             "\t-w <filename>\tGet video stream from camera specified by filename. If no filename specified, defaults to /dev/video0.\n"\
-            "\t-c vrep\t\tUse the specified method to deal with control commands (right now only v-rep is supported.\n",
+            "\t-c {vrep|print}\t\tUse the specified method to deal with control commands.\n",
             pname);
 }
 
@@ -99,6 +100,11 @@ int main(int argc, char **argv)
 
                     vrep_control_init(&data_options, vrep_client_id);
 
+                    control_specified = 1;
+                }
+                else if(!strcmp(optarg, "print"))
+                {
+                	print_control_init(&data_options);
                     control_specified = 1;
                 }
 

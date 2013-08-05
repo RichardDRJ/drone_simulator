@@ -164,7 +164,6 @@ void ftp_quit_handler(void *data)
 {
     struct session_data *d = data;
     close(d->client_sockfd);
-    close(d->server_sockfd);
     write(d->client_sockfd, MSG_QUIT_SUCCESS, strlen(MSG_QUIT_SUCCESS));
     d->done = 1;
 }

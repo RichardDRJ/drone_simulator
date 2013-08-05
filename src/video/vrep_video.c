@@ -11,6 +11,8 @@ static simxInt sensor_handle;
 
 extern uint8_t flip_video;
 
+extern pthread_mutex_t vrep_mutex;
+
 void vrep_video_init(struct data_options *d, simxInt id)
 {
     flip_video = 1;
@@ -34,6 +36,8 @@ static int read_vrep_stream(void *opaque, uint8_t *buf, int buf_size)
     //    simxInt opmode;
     simxChar *image;
 
+	pthread_mutex_lock(&vrep_mutex);
+
     if(!size_left)
     {
         int ret;
@@ -42,6 +46,7 @@ static int read_vrep_stream(void *opaque, uint8_t *buf, int buf_size)
         {
             free(tmp_image);
             tmp_image = NULL;
+            tmp_image_ptr = NULL;
         }
 
         do
@@ -60,7 +65,6 @@ static int read_vrep_stream(void *opaque, uint8_t *buf, int buf_size)
             }
             else
             {
-                printf("line %d\n", __LINE__);
                 do
                 {
                     ret = simxGetVisionSensorImage(client_id, sensor_handle, resolution, &image, 0, simx_opmode_buffer);
@@ -77,9 +81,6 @@ static int read_vrep_stream(void *opaque, uint8_t *buf, int buf_size)
 
         //        init = !(size_left == 0);
 
-        printf("size_left: %d\n", size_left);
-        printf("line %d\n", __LINE__);
-
         if(!tmp_image)
         {
             tmp_image = malloc(size_left);
@@ -87,8 +88,9 @@ static int read_vrep_stream(void *opaque, uint8_t *buf, int buf_size)
         }
 
         memcpy(tmp_image, image, size_left);
-        printf("line %d\n", __LINE__);
     }
+    
+    pthread_mutex_unlock(&vrep_mutex);
 
     int copy_size;
     if(size_left <= buf_size)
@@ -113,7 +115,7 @@ void open_vrep_stream(struct input_stream *in_stream)
     //open rtsp
     in_stream->ifcx = avformat_alloc_context();
 
-    int in_buffer_size = sizeof(unsigned char) * 1024 * 1024 * 4;
+    int in_buffer_size = sizeof(unsigned char) * 1024 * 512;
     unsigned char *in_pb_buffer = av_malloc(in_buffer_size);
 
     in_stream->ifcx->pb = avio_alloc_context(in_pb_buffer, in_buffer_size, 0, NULL, &read_vrep_stream, NULL, NULL);
@@ -134,7 +136,7 @@ void open_vrep_stream(struct input_stream *in_stream)
     {
         char errbuf[100];
         av_strerror(ret, errbuf, 100);
-        printf("%s\n", errbuf);
+//        printf("%s\n", errbuf);
         error("Cannot open input file");
     }
 
@@ -162,37 +164,4 @@ void open_vrep_stream(struct input_stream *in_stream)
 
 
     return;
-
-    AVCodec *in_codec = avcodec_find_decoder(AV_CODEC_ID_RAWVIDEO);
-    if(!in_codec)
-        error("Codec not found");
-
-    in_stream->iccx = avcodec_alloc_context3(in_codec);
-    if(!in_stream->iccx)
-        error("Could not allocate context");
-
-    in_stream->iccx->pix_fmt = AV_PIX_FMT_RGB24;
-    in_stream->iccx->width = 640;
-    in_stream->iccx->height = 360;
-    in_stream->iccx->time_base = (AVRational){1,30};
-    in_stream->iccx->gop_size = 30;
-    in_stream->iccx->max_b_frames = 1;
-    in_stream->iccx->bit_rate = 400000;
-
-    if (avcodec_open2(in_stream->iccx, in_codec, NULL) < 0)
-        error("Could not open codec");
-
-    in_stream->ifcx->streams = (AVStream **)av_malloc(sizeof(AVStream *)); 
-    in_stream->ifcx->nb_streams = 1;
-    in_stream->ifcx->streams[0] = (AVStream *)av_malloc(sizeof(AVStream));
-    in_stream->ist = in_stream->ifcx->streams[0];
-    in_stream->video_stream_index = 0;
-
-    if ( in_stream->video_stream_index < 0 )
-        error("Cannot find input video stream");
-
-    in_stream->iccx->codec = avcodec_find_decoder(in_stream->iccx->codec_id);
-
-    if (avcodec_open2(in_stream->iccx, in_stream->iccx->codec, NULL) < 0)
-        error("Could not open codec");
 }

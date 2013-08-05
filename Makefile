@@ -39,9 +39,10 @@ $(BINDIR)/%.o: src/%.c
 
 $(SRCS): libav $(HEADERS)
 
-libav:
+libav: bin/libs/libav/
 	@echo "Building libav..."
-	@cd libav-9.8 && ./configure --enable-gpl --enable-libx264 --enable-libxvid --enable-version3 --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libmp3lame --enable-libspeex --enable-libvorbis --enable-libtheora --enable-libvpx --enable-libopenjpeg --enable-libfreetype --enable-doc --enable-shared --disable-libopenjpeg --disable-libspeex --disable-programs --disable-doc  --incdir=../src/libs/libav/ --bindir=../bin/libs/libav/ --bindir=../bin/libs/libav/presets && make && make install
+	@#@cd libav-9.8 && ./configure --enable-gpl --enable-libx264 --enable-libxvid --enable-version3 --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libmp3lame --enable-libspeex --enable-libvorbis --enable-libtheora --enable-libvpx --enable-libopenjpeg --enable-libfreetype --enable-doc --enable-shared --disable-libopenjpeg --disable-libspeex --disable-programs --disable-doc  --incdir=$(CURDIR)/src/libs/libav/ --libdir=$(CURDIR)/bin/libs/libav/ --shlibdir=$(CURDIR)/bin/libs/libav/ --bindir=$(CURDIR)/bin/libs/libav/presets && 
+	make -C libav-9.8 && make -C libav-9.8 install
 
 clean:
 	-rm -f $(BINDIR)/*~ $(addsuffix /*.o,$(BINMODS)) $(BINDIR)/*.o $(TARGET)

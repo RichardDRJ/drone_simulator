@@ -25,15 +25,21 @@ void control_empty_handler(void *arg)
 
 static char *control_read_args(struct control_session_data *session_data)
 {
-    //  Doesn't work because now the packet is read into a buffer.
     char *buf_start = session_data->buf_ptr;
+    
+    memcpy(session_data->buffer, buf_start, session_data->bytes_left);
+
+	session_data->bytes_left += recvfrom(session_data->sockfd, buf_start, session_data->buf_size - session_data->bytes_left, 0, (struct sockaddr *)&session_data->serv_addr, &session_data->len);
+	
+	if(session_data->bytes_left < 1)
+		error("ERROR reading from socket");
 
     while(1)
     {
         if(!session_data->bytes_left)
         {
             errno = ENOBUFS;
-            error("ERROR buffer too small");
+            error("ERROR");
         }
         else
         {

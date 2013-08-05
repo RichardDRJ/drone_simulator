@@ -41,7 +41,7 @@ void *control_listen(void *args)
     int listen_port = server_init->port;
 
     struct control_session_data td = {.done = 0,
-        .buf_size = 200,
+        .buf_size = 255,
         .bytes_left = 0,
         .buffer = malloc(sizeof(char) * td.buf_size),
         .buf_ptr = td.buffer,
@@ -102,6 +102,8 @@ void *control_listen(void *args)
             --td.bytes_left;
         }
     }
+    
+    free(td.buffer);
 
     return NULL;
 }

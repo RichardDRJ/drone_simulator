@@ -44,18 +44,18 @@ void *navdata_listen(void *args)
         return NULL;
     }
 
-    uint32_t sequence = 0;
+//    uint32_t sequence = 0;
 
     while(1)
     {
-        int navdata_size = sizeof(navdata_t) + sizeof(navdata_demo_t) + sizeof(navdata_cks_t) - sizeof(navdata_option_t);
+        /*int navdata_size = sizeof(navdata_t) + sizeof(navdata_demo_t) + sizeof(navdata_cks_t) - sizeof(navdata_option_t);
         navdata_t *navdata = malloc(navdata_size);
 
         navdata->header = NAVDATA_HEADER;
         navdata->ardrone_state = 0;
         navdata->sequence = sequence++;
 
-        /*navdata->ctrl_state = 0;
+        navdata->ctrl_state = 0;
         navdata->vbat_flying_percentage = 0xFFFFFFFF;
         navdata->theta = 0;
         navdata->phi = 0;
@@ -66,9 +66,9 @@ void *navdata_listen(void *args)
         navdata->vy = 0;
         navdata->vz = 0;
 
-        navdata->num_frames = 0;*/
+        navdata->num_frames = 0;
 
-        write(sockfd, navdata, navdata_size);
+        write(sockfd, navdata, navdata_size);*/
     }
 
     return NULL;
