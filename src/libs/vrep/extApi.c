@@ -1582,11 +1582,12 @@ SIMX_THREAD_RET_TYPE _communicationThread(simxVoid* p)
 				crc=extApi_endianConversionUShort(((simxUShort*)(replyData+simx_headeroffset_crc))[0]);
 				if (_getCRC(replyData+2,replyDataSize-2)==crc)
 				{
-					/* Place the reply into the input buffer */
-					tmp=extApi_endianConversionInt(((simxInt*)(replyData+simx_headeroffset_message_id))[0]);
-
 					if (replyDataSize>SIMX_HEADER_SIZE)
 					{ /* We received a non-empty message */
+                        
+                        /* Place the reply into the input buffer */
+                        tmp=extApi_endianConversionInt(((simxInt*)(replyData+simx_headeroffset_message_id))[0]);
+                        
 						extApi_lockResources(clientID);
 						/* a) Create a new buffer that will hold the merged input data */
 						tempBuffer=extApi_allocateBuffer(_messageReceived_bufferSize[clientID]);

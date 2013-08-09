@@ -1,6 +1,7 @@
 #include "control/print_control.h"
 #include "util/error.h"
 #include <stdio.h>
+#include <unistd.h>
 
 void print_control_init(struct data_options *d)
 {

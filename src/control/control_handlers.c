@@ -26,13 +26,6 @@ void control_empty_handler(void *arg)
 static char *control_read_args(struct control_session_data *session_data)
 {
     char *buf_start = session_data->buf_ptr;
-    
-    memcpy(session_data->buffer, buf_start, session_data->bytes_left);
-
-	session_data->bytes_left += recvfrom(session_data->sockfd, buf_start, session_data->buf_size - session_data->bytes_left, 0, (struct sockaddr *)&session_data->serv_addr, &session_data->len);
-	
-	if(session_data->bytes_left < 1)
-		error("ERROR reading from socket");
 
     while(1)
     {
@@ -43,7 +36,6 @@ static char *control_read_args(struct control_session_data *session_data)
         }
         else
         {
-            printf("%c", *session_data->buf_ptr);
             if(*session_data->buf_ptr == '\r')
                 break;
 
@@ -51,8 +43,6 @@ static char *control_read_args(struct control_session_data *session_data)
             ++session_data->buf_ptr;
         }
     }
-
-    printf("\n");
 
     return buf_start;
 }

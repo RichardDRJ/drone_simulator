@@ -20,7 +20,7 @@ vpath $(SRCDIR)
 CC		= gcc
 CFLAGS	= -Wall -pedantic -Werror -extra -std=gnu99 -g $(shell pkg-config --cflags $(FFMPEG_LIBS))
 LIBS	= -lpthread $(addprefix -L,$(BINMODS)) $(shell pkg-config --libs-only-l $(FFMPEG_LIBS))
-LDFLAGS	= 
+LDFLAGS	= -pthread
 DEFS	= -DMAX_EXT_API_CONNECTIONS=255 -DNON_MATLAB_PARSING
 INCLUDES	= -Isrc
 

@@ -41,10 +41,8 @@ void *control_listen(void *args)
     int listen_port = server_init->port;
 
     struct control_session_data td = {.done = 0,
-        .buf_size = 255,
+        .buf_size = 300,
         .bytes_left = 0,
-        .buffer = malloc(sizeof(char) * td.buf_size),
-        .buf_ptr = td.buffer,
         .seq_num = 0,
         .len = sizeof(td.serv_addr),
         .max_roll = 0.4f,
@@ -54,6 +52,8 @@ void *control_listen(void *args)
         .at_pcmd_mag = server_init->d->at_pcmd_mag,
         .at_ref = server_init->d->at_ref,
     };
+    
+    td.buffer = malloc(sizeof(char) * td.buf_size);
 
     td.sockfd = socket(AF_INET, SOCK_DGRAM, 0);
 
@@ -70,7 +70,7 @@ void *control_listen(void *args)
     {
         if(!td.bytes_left)
         {
-            td.bytes_left = recvfrom(td.sockfd, td.buffer, td.buf_size, 0, (struct sockaddr *)&td.serv_addr, &td.len);
+            td.bytes_left = recvfrom(td.sockfd, td.buffer, td.buf_size, 0, NULL, NULL);
 
             if(td.bytes_left < 1)
                 error("ERROR reading from socket");
@@ -83,15 +83,20 @@ void *control_listen(void *args)
             {
                 if(n && n->handler)
                 {
+                    printf("\n");
                     ++td.buf_ptr;
+                    --td.bytes_left;
                     n->handler(&td);
                     n = control_command_trie.root;
+                    
+                    continue;
                 }
 
                 n = control_command_trie.root;
             }
             else
             {
+                printf("%c", *td.buf_ptr);
                 n = traverse_to_child_char(*td.buf_ptr, n);
 
                 if(!n)

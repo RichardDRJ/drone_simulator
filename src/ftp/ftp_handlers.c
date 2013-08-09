@@ -54,17 +54,15 @@ char *read_args(int sockfd)
         if(index == buffsize)
         {
             buffsize *= 2;
-            free(args_buffer);
             char *tmp_args_buffer = calloc(sizeof(char), buffsize);
             memcpy(tmp_args_buffer, args_buffer, buffsize / 2);
+            free(args_buffer);
             args_buffer = tmp_args_buffer;
             continue;
         }
 
         break;
     }
-
-    printf("final args_buffer: %s\n", args_buffer);
 
     return args_buffer;
 }
@@ -163,9 +161,9 @@ void ftp_pasv_handler(void *data)
 void ftp_quit_handler(void *data)
 {
     struct session_data *d = data;
-    close(d->client_sockfd);
-    write(d->client_sockfd, MSG_QUIT_SUCCESS, strlen(MSG_QUIT_SUCCESS));
     d->done = 1;
+    write(d->client_sockfd, MSG_QUIT_SUCCESS, strlen(MSG_QUIT_SUCCESS));
+    close(d->client_sockfd);
 }
 
 void ftp_empty_handler(void *data)

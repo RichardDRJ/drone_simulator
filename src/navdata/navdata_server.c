@@ -24,7 +24,7 @@ void *navdata_listen(void *args)
 
     struct sockaddr_in serv_addr;
 
-    int sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
@@ -35,41 +35,98 @@ void *navdata_listen(void *args)
 
     listen(sockfd, 5);
 
-    char current_char;
-    int8_t bytes_read = recv(sockfd, &current_char, 1, 0);
-
-    if(bytes_read < 1)
+    int8_t bytes_read;
+    
+    uint32_t sequence = 0;
+    
+    struct sockaddr_in client_addr;
+    socklen_t client_length = sizeof(struct sockaddr_in);
+    
+    int navdata_size = sizeof(navdata_t) + sizeof(navdata_cks_t) - sizeof(navdata_option_t);
+    navdata_t *navdata = calloc(navdata_size, 1);
+    
+    do {
+        bytes_read = recvfrom(sockfd, &sequence, sizeof(sequence), 0, (struct sockaddr*)&client_addr, &client_length);
+        
+        if(bytes_read < 1)
+            error("ERROR reading from socket");
+    } while(!bytes_read);
+    
+    while(1)
     {
-        error("ERROR reading from socket");
-        return NULL;
+        navdata->header = NAVDATA_HEADER;
+        navdata->ardrone_state = ARDRONE_CONTROL_MASK | ARDRONE_ALTITUDE_MASK | ARDRONE_COMMAND_MASK | ARDRONE_CAMERA_MASK | ARDRONE_NAVDATA_BOOTSTRAP | ARDRONE_PIC_VERSION_MASK | ARDRONE_ATCODEC_THREAD_ON | ARDRONE_NAVDATA_THREAD_ON | ARDRONE_VIDEO_THREAD_ON | ARDRONE_ACQ_THREAD_ON;
+        navdata->sequence = sequence++;
+        navdata->vision_defined = 0;
+        
+        navdata_cks_t *cks = (navdata_cks_t*)(&navdata->options[0]);
+        cks->tag = NAVDATA_CKS_TAG;
+        cks->size = sizeof(navdata_cks_t);
+        
+        uint32_t i = 0;
+        uint32_t checksum = 0;
+        
+        for(i = 0; i < navdata_size - sizeof(navdata_cks_t); ++i)
+            checksum += ((uint8_t*)navdata)[i];
+        
+        cks->cks = checksum;
+        
+        sendto(sockfd, navdata, navdata_size, 0, (struct sockaddr*)&client_addr, client_length);
     }
+    
+    free(navdata);
+    
+    /*int navdata_size = sizeof(navdata_t) + sizeof(navdata_demo_t) + sizeof(navdata_cks_t) - sizeof(navdata_option_t);
+    navdata_t *navdata = calloc(navdata_size, 1);
+    
+    do {
+        bytes_read = recvfrom(sockfd, &sequence, sizeof(sequence), 0, (struct sockaddr*)&client_addr, &client_length);
 
-//    uint32_t sequence = 0;
+        if(bytes_read < 1)
+            error("ERROR reading from socket");
+    } while(!bytes_read);
 
     while(1)
     {
-        /*int navdata_size = sizeof(navdata_t) + sizeof(navdata_demo_t) + sizeof(navdata_cks_t) - sizeof(navdata_option_t);
-        navdata_t *navdata = malloc(navdata_size);
-
         navdata->header = NAVDATA_HEADER;
-        navdata->ardrone_state = 0;
+        navdata->ardrone_state = ARDRONE_NAVDATA_DEMO_MASK;
         navdata->sequence = sequence++;
+        navdata->vision_defined = 0;
+        
+        navdata_demo_t *demo = (navdata_demo_t*)(&navdata->options[0]);
 
-        navdata->ctrl_state = 0;
-        navdata->vbat_flying_percentage = 0xFFFFFFFF;
-        navdata->theta = 0;
-        navdata->phi = 0;
-        navdata->psi = 0;
-        navdata->altitude = 0;
+        demo->tag = NAVDATA_DEMO_TAG;
+        demo->ctrl_state = 0;
+        demo->vbat_flying_percentage = 0xFFFFFFFF;
+        demo->theta = 0;
+        demo->phi = 0;
+        demo->psi = 0;
+        demo->altitude = 0;
 
-        navdata->vx = 0;
-        navdata->vy = 0;
-        navdata->vz = 0;
+        demo->vx = 0;
+        demo->vy = 0;
+        demo->vz = 0;
 
-        navdata->num_frames = 0;
+        demo->num_frames = 0;
+        
+        demo->size = sizeof(navdata_demo_t);
+        
+        navdata_cks_t *cks = (navdata_cks_t*)(demo + 1);
+        cks->tag = NAVDATA_CKS_TAG;
+        cks->size = sizeof(navdata_cks_t);
+        
+        uint32_t i = 0;
+        uint32_t checksum = 0;
+        
+        for(i = 0; i < navdata_size - sizeof(navdata_cks_t); ++i)
+            checksum += ((uint8_t*)navdata)[i];
+        
+        cks->cks = checksum;
 
-        write(sockfd, navdata, navdata_size);*/
+        sendto(sockfd, navdata, navdata_size, 0, (struct sockaddr*)&client_addr, client_length);
     }
+    
+    free(navdata);*/
 
     return NULL;
 }

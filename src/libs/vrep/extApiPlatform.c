@@ -487,7 +487,8 @@ simxChar extApi_connectToServer_socket(simxInt clientID,const simxChar* theConne
 #endif
 		return(0);
 	}
-	_socketServer[clientID].sin_addr.s_addr=*((unsigned long*)hp->h_addr);
+	_socketServer[clientID].sin_addr.s_addr=0;
+    memcpy(&_socketServer[clientID].sin_addr.s_addr, hp->h_addr, hp->h_length);
 	_socketServer[clientID].sin_family=AF_INET;
 	_socketServer[clientID].sin_port=htons(theConnectionPort);
 	if(connect(_socketConn[clientID],(struct sockaddr*)&_socketServer[clientID],sizeof(_socketServer[clientID])))
