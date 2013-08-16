@@ -10,6 +10,7 @@
 #include "control/vrep_control.h"
 #include "navdata/navdata_server.h"
 #include "control/print_control.h"
+#include "controlcomm/controlcomm_server.h"
 
 /* V-rep includes */
 #include "libs/vrep/extApi.h"
@@ -122,6 +123,7 @@ int main(int argc, char **argv)
     pthread_t ftp_thread;
     pthread_t video_thread;
     pthread_t control_thread;
+    pthread_t controlcomm_thread;
     pthread_t navdata_thread;
 
     struct server_init ftp_server_init = {
@@ -131,6 +133,13 @@ int main(int argc, char **argv)
 
     create_ftp_command_trie();
     pthread_create(&ftp_thread, NULL, ftp_listen, (void*)&ftp_server_init);
+
+    struct server_init controlcomm_server_init = {
+        .port = CONTROLCOMM_LISTEN_PORT,
+        .d = &data_options,
+    };
+
+    pthread_create(&controlcomm_thread, NULL, controlcomm_listen, (void*)&controlcomm_server_init);
 
     if(video_specified)
     {
@@ -165,5 +174,6 @@ int main(int argc, char **argv)
     pthread_join(navdata_thread, NULL);
     if(video_specified)
         pthread_join(video_thread, NULL);
+    pthread_join(controlcomm_thread, NULL);
     pthread_join(ftp_thread, NULL);
 }

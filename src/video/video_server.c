@@ -171,7 +171,7 @@ static void send_video(int fd, int codec_id, struct data_options *dopts)
     occx->height = 360;
     occx->time_base= (AVRational){1,30};
     occx->gop_size = 30;
-    occx->max_b_frames = 1;
+    occx->max_b_frames = 0;
     occx->bit_rate = 400000;
 
     //av_opt_set(occx->priv_data, "preset", "ultrafast", 0);

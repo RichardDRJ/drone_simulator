@@ -69,7 +69,7 @@ static int read_vrep_stream(void *opaque, uint8_t *buf, int buf_size)
                 {
                     ret = simxGetVisionSensorImage(client_id, sensor_handle, resolution, &image, 0, simx_opmode_buffer);
                 }
-                while(ret == simx_error_novalue_flag);
+                while(ret != simx_error_noerror);
 
                 if(ret != simx_error_noerror)
                     error("Could not read from vision sensor");
