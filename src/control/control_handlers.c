@@ -47,6 +47,23 @@ static char *control_read_args(struct control_session_data *session_data)
     return buf_start;
 }
 
+void control_ctrl_handler(void *arg)
+{
+    struct control_session_data *session_data = arg;
+    char *args = control_read_args(session_data);
+
+    uint32_t seq_num;
+    uint32_t control;
+
+    sscanf(args, "%" SCNu32 ",%" SCNu32 "\r", &seq_num, &control);
+    
+    if(seq_num >= session_data->seq_num)
+    {
+        session_data->at_ref(session_data, (control >> 9) & 1, (control >> 8) & 1);
+        session_data->seq_num = seq_num;
+    }
+}
+
 void control_ref_handler(void *arg)
 {
     struct control_session_data *session_data = arg;

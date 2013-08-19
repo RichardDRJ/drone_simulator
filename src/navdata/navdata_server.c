@@ -42,41 +42,7 @@ void *navdata_listen(void *args)
     struct sockaddr_in client_addr;
     socklen_t client_length = sizeof(struct sockaddr_in);
     
-    int navdata_size = sizeof(navdata_t) + sizeof(navdata_cks_t) - sizeof(navdata_option_t);
-    navdata_t *navdata = calloc(navdata_size, 1);
-    
-    do {
-        bytes_read = recvfrom(sockfd, &sequence, sizeof(sequence), 0, (struct sockaddr*)&client_addr, &client_length);
-        
-        if(bytes_read < 1)
-            error("ERROR reading from socket");
-    } while(!bytes_read);
-    
-    while(1)
-    {
-        navdata->header = NAVDATA_HEADER;
-        navdata->ardrone_state = ARDRONE_CONTROL_MASK | ARDRONE_ALTITUDE_MASK | ARDRONE_COMMAND_MASK | ARDRONE_CAMERA_MASK | ARDRONE_NAVDATA_BOOTSTRAP | ARDRONE_PIC_VERSION_MASK | ARDRONE_ATCODEC_THREAD_ON | ARDRONE_NAVDATA_THREAD_ON | ARDRONE_VIDEO_THREAD_ON | ARDRONE_ACQ_THREAD_ON;
-        navdata->sequence = sequence++;
-        navdata->vision_defined = 0;
-        
-        navdata_cks_t *cks = (navdata_cks_t*)(&navdata->options[0]);
-        cks->tag = NAVDATA_CKS_TAG;
-        cks->size = sizeof(navdata_cks_t);
-        
-        uint32_t i = 0;
-        uint32_t checksum = 0;
-        
-        for(i = 0; i < navdata_size - sizeof(navdata_cks_t); ++i)
-            checksum += ((uint8_t*)navdata)[i];
-        
-        cks->cks = checksum;
-        
-        sendto(sockfd, navdata, navdata_size, 0, (struct sockaddr*)&client_addr, client_length);
-    }
-    
-    free(navdata);
-    
-    /*int navdata_size = sizeof(navdata_t) + sizeof(navdata_demo_t) + sizeof(navdata_cks_t) - sizeof(navdata_option_t);
+    int navdata_size = sizeof(navdata_t) + sizeof(navdata_demo_t) + sizeof(navdata_cks_t) - sizeof(navdata_option_t);
     navdata_t *navdata = calloc(navdata_size, 1);
     
     do {
@@ -94,8 +60,9 @@ void *navdata_listen(void *args)
         navdata->vision_defined = 0;
         
         navdata_demo_t *demo = (navdata_demo_t*)(&navdata->options[0]);
+        server_init->d->fill_navdata_demo(demo);
 
-        demo->tag = NAVDATA_DEMO_TAG;
+/*        demo->tag = NAVDATA_DEMO_TAG;
         demo->ctrl_state = 0;
         demo->vbat_flying_percentage = 0xFFFFFFFF;
         demo->theta = 0;
@@ -109,7 +76,7 @@ void *navdata_listen(void *args)
 
         demo->num_frames = 0;
         
-        demo->size = sizeof(navdata_demo_t);
+        demo->size = sizeof(navdata_demo_t);*/
         
         navdata_cks_t *cks = (navdata_cks_t*)(demo + 1);
         cks->tag = NAVDATA_CKS_TAG;
@@ -126,7 +93,7 @@ void *navdata_listen(void *args)
         sendto(sockfd, navdata, navdata_size, 0, (struct sockaddr*)&client_addr, client_length);
     }
     
-    free(navdata);*/
+    free(navdata);
 
     return NULL;
 }

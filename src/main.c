@@ -9,6 +9,7 @@
 #include "control/control_server.h"
 #include "control/vrep_control.h"
 #include "navdata/navdata_server.h"
+#include "navdata/vrep_navdata.h"
 #include "control/print_control.h"
 #include "controlcomm/controlcomm_server.h"
 
@@ -37,13 +38,14 @@ int main(int argc, char **argv)
     struct data_options data_options;
 
     uint8_t video_specified = 0;
+    uint8_t navdata_specified = 0;
     uint8_t control_specified = 0;
     uint8_t vrep_init = 0;
     simxInt vrep_client_id;
 
     int c;
 
-    while ((c = getopt (argc, argv, "c:vw::h")) != -1)
+    while ((c = getopt (argc, argv, "n:c:vw::h")) != -1)
     {
         switch (c)
         {
@@ -70,6 +72,20 @@ int main(int argc, char **argv)
             case 'h':
                 usage(argv[0]);
                 return 0;
+            case 'n':
+                if(navdata_specified)
+                {
+                    usage(argv[0]);
+                    error("Can only have one navdata source");
+                }
+
+                if(!strcmp(optarg, "vrep"))
+                {
+                    vrep_navdata_init(&data_options, vrep_client_id);
+                    navdata_specified = 1;
+                }
+
+                break;
             case 'w':
                 if(video_specified)
                 {
@@ -105,7 +121,7 @@ int main(int argc, char **argv)
                 }
                 else if(!strcmp(optarg, "print"))
                 {
-                	print_control_init(&data_options);
+                    print_control_init(&data_options);
                     control_specified = 1;
                 }
 
@@ -151,12 +167,15 @@ int main(int argc, char **argv)
         pthread_create(&video_thread, NULL, video_listen, (void*)&video_server_init);
     }
 
-    struct server_init navdata_server_init = {
-        .port = NAVDATA_PORT,
-        .d = &data_options,
-    };
+    if(navdata_specified)
+    {
+        struct server_init navdata_server_init = {
+            .port = NAVDATA_PORT,
+            .d = &data_options,
+        };
 
-    pthread_create(&navdata_thread, NULL, navdata_listen, (void*)&navdata_server_init);
+        pthread_create(&navdata_thread, NULL, navdata_listen, (void*)&navdata_server_init);
+    }
 
     if(control_specified)
     {
@@ -171,7 +190,8 @@ int main(int argc, char **argv)
 
     if(control_specified)
         pthread_join(control_thread, NULL);
-    pthread_join(navdata_thread, NULL);
+    if(navdata_specified)
+        pthread_join(navdata_thread, NULL);
     if(video_specified)
         pthread_join(video_thread, NULL);
     pthread_join(controlcomm_thread, NULL);

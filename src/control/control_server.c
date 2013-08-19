@@ -83,7 +83,6 @@ void *control_listen(void *args)
             {
                 if(n && n->handler)
                 {
-                    printf("\n");
                     ++td.buf_ptr;
                     --td.bytes_left;
                     n->handler(&td);
@@ -96,7 +95,6 @@ void *control_listen(void *args)
             }
             else
             {
-                printf("%c", *td.buf_ptr);
                 n = traverse_to_child_char(*td.buf_ptr, n);
 
                 if(!n)
