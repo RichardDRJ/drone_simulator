@@ -32,6 +32,6 @@ void vrep_at_pcmd_mag(struct control_session_data *d, uint32_t control, float ro
     simxSetFloatSignal(client_id, "QCRoll", roll * d->max_roll, simx_opmode_oneshot);
     simxSetFloatSignal(client_id, "QCPitch", -pitch * d->max_pitch, simx_opmode_oneshot);
     simxSetFloatSignal(client_id, "QCVSpeed", vert_speed * d->max_vert_speed / 1000.0f, simx_opmode_oneshot);
-    simxSetFloatSignal(client_id, "QCASpeed", ang_speed * d->max_ang_speed, simx_opmode_oneshot);
+    simxSetFloatSignal(client_id, "QCASpeed", -ang_speed * d->max_ang_speed, simx_opmode_oneshot);
     pthread_mutex_unlock(&vrep_mutex);
 }

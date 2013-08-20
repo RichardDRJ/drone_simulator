@@ -33,6 +33,7 @@ void create_control_command_trie(void)
     insert_to_trie(&control_command_trie, "AT*CONFIG_IDS", &control_empty_handler);
     insert_to_trie(&control_command_trie, "AT*COMWDG", &control_empty_handler);
     insert_to_trie(&control_command_trie, "AT*CALIB", &control_empty_handler);
+    insert_to_trie(&control_command_trie, "AT*CTRL", &control_ctrl_handler);
 }
 
 void *control_listen(void *args)

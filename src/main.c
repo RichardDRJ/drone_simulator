@@ -2,6 +2,7 @@
 #include "util/port_numbers.h"
 #include "util/server_init.h"
 #include "util/error.h"
+#include "util/config.h"
 #include "ftp/ftp_server.h"
 #include "video/video_server.h"
 #include "video/vrep_video.h"
@@ -35,6 +36,8 @@ static void usage(char *pname)
 
 int main(int argc, char **argv)
 {
+    config_read_options();
+
     struct data_options data_options;
 
     uint8_t video_specified = 0;

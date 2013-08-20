@@ -3,6 +3,8 @@
 #include "control_server.h"
 #include "control_messages.h"
 #include "util/error.h"
+#include "data_structures/linked_list.h"
+#include "util/config.h"
 
 /* Standard includes */
 #include <stdio.h>
@@ -13,10 +15,14 @@
 #include <strings.h>
 #include <string.h>
 #include <errno.h>
+#include <semaphore.h>
 
 /* Networking includes */
 #include <sys/socket.h>
 #include <netinet/in.h>
+
+extern struct linked_list data_list;
+extern sem_t data_semaphore;
 
 void control_empty_handler(void *arg)
 {
@@ -54,13 +60,25 @@ void control_ctrl_handler(void *arg)
 
     uint32_t seq_num;
     uint32_t control;
+    FILE *f;
 
     sscanf(args, "%" SCNu32 ",%" SCNu32 "\r", &seq_num, &control);
     
-    if(seq_num >= session_data->seq_num)
+    switch(control)
     {
-        session_data->at_ref(session_data, (control >> 9) & 1, (control >> 8) & 1);
-        session_data->seq_num = seq_num;
+        case 4:
+            f = fopen("configuration", "rb");
+            fseek(f, 0L, SEEK_END);
+            size_t sz = ftell(f);
+            fseek(f, 0L, SEEK_SET);
+            char *buffer = malloc(sz);
+            fread(buffer, sz, 1, f);
+            list_add(&data_list, buffer, sz);
+            sem_post(&data_semaphore);
+            fclose(f);
+            break;
+        default:
+            break;
     }
 }
 
@@ -77,6 +95,24 @@ void control_ref_handler(void *arg)
     if(seq_num >= session_data->seq_num)
     {
         session_data->at_ref(session_data, (control >> 9) & 1, (control >> 8) & 1);
+        session_data->seq_num = seq_num;
+    }
+}
+
+void control_config_handler(void *arg)
+{
+    struct control_session_data *session_data = arg;
+    char *args = control_read_args(session_data);
+
+    uint32_t seq_num;
+    char param_name[41];
+    char param_value[81];
+
+    sscanf(args, "%" SCNu32 ",%40s,%80s\r", &seq_num, param_name, param_value);
+    
+    if(seq_num >= session_data->seq_num)
+    {
+        config_set_option(param_name, param_value);
         session_data->seq_num = seq_num;
     }
 }
