@@ -38,12 +38,7 @@ $(TARGET): $(OBJECTS)
 $(BINDIR)/%.o: src/%.c
 	$(CC) $(CFLAGS) $(LDFLAGS) $(INCLUDES) $(DEFS) -c $< -o $@
 
-$(SRCS): libav $(HEADERS)
-
-libav: bin/libs/libav/
-	@#echo "Building libav..."
-	@#@cd libav-9.8 && ./configure --enable-gpl --enable-libx264 --enable-libxvid --enable-version3 --enable-libopencore-amrnb --enable-libopencore-amrwb --enable-libmp3lame --enable-libspeex --enable-libvorbis --enable-libtheora --enable-libvpx --enable-libopenjpeg --enable-libfreetype --enable-doc --enable-shared --disable-libopenjpeg --disable-libspeex --disable-programs --disable-doc  --incdir=$(CURDIR)/src/libs/libav/ --libdir=$(CURDIR)/bin/libs/libav/ --shlibdir=$(CURDIR)/bin/libs/libav/ --bindir=$(CURDIR)/bin/libs/libav/presets && 
-	@#make -C libav-9.8 && make -C libav-9.8 install
+$(SRCS): $(HEADERS)
 
 clean:
 	-rm -f $(BINDIR)/*~ $(addsuffix /*.o,$(BINMODS)) $(BINDIR)/*.o $(TARGET)
