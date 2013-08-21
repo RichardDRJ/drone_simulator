@@ -6,9 +6,20 @@
 
 static struct trie opt_trie = {.root = NULL};
 
-void config_set_option(char *param_name, char *param_value)
+struct trie *get_config_trie(void)
 {
-    insert_kv_pair_to_trie(&opt_trie, param_name, param_value);
+    return &opt_trie;
+}
+
+void config_set_option(char *param_name, char *param_value, struct control_session_data *session_data)
+{
+    handler_t handler = insert_kv_pair_to_trie(&opt_trie, param_name, param_value);
+    struct config_handler_data d = {
+        .session_data = session_data,
+        .value = param_value,
+    };
+    if(handler)
+        handler(&d);
 }
 
 void config_read_options(void)

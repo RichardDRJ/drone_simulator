@@ -56,7 +56,7 @@ uint8_t iterate_key_value_pairs(struct trie *t, struct trie_node **reentrant, ch
     return 1;
 }
 
-void insert_kv_pair_to_trie(struct trie *t, char *key, char *value)
+handler_t insert_kv_pair_to_trie(struct trie *t, char *key, char *value)
 {
     struct trie_node *n = t->root;
     char *c = key;
@@ -113,6 +113,8 @@ void insert_kv_pair_to_trie(struct trie *t, char *key, char *value)
 
     strcpy(n->value, value);
     strcpy(n->key, key);
+
+    return n->handler;
 }
 
 void insert_to_trie(struct trie *t, char *c, void (*handler)(void*))

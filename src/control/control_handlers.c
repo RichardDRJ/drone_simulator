@@ -99,6 +99,28 @@ void control_ref_handler(void *arg)
     }
 }
 
+void control_euler_max_handler(void *aux)
+{
+    struct config_handler_data *d = aux;
+    float value = atof(d->value);
+    d->session_data->max_roll = value;
+    d->session_data->max_pitch = value;
+}
+
+void control_vz_max_handler(void *aux)
+{
+    struct config_handler_data *d = aux;
+    float value = atof(d->value);
+    d->session_data->max_vert_speed = value;
+}
+
+void control_yaw_handler(void *aux)
+{
+    struct config_handler_data *d = aux;
+    float value = atof(d->value);
+    d->session_data->max_ang_speed = value;
+}
+
 void control_config_handler(void *arg)
 {
     struct control_session_data *session_data = arg;
@@ -112,7 +134,7 @@ void control_config_handler(void *arg)
     
     if(seq_num >= session_data->seq_num)
     {
-        config_set_option(param_name, param_value);
+        config_set_option(param_name, param_value, session_data);
         session_data->seq_num = seq_num;
     }
 }

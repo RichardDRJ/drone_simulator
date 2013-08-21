@@ -2,6 +2,7 @@
 #include "util/port_numbers.h"
 #include "util/error.h"
 #include "util/server_init.h"
+#include "util/config.h"
 #include "control/control_server.h"
 #include "control/vrep_control.h"
 #include "control/control_handlers.h"
@@ -34,6 +35,11 @@ void create_control_command_trie(void)
     insert_to_trie(&control_command_trie, "AT*COMWDG", &control_empty_handler);
     insert_to_trie(&control_command_trie, "AT*CALIB", &control_empty_handler);
     insert_to_trie(&control_command_trie, "AT*CTRL", &control_ctrl_handler);
+
+    /*struct trie *config_trie = get_config_trie();
+
+    insert_to_trie(config_trie, "control:euler_angle_max", &control_euler_max_handler);
+    insert_to_trie(config_trie, "control:control_vz_max", &control_vz_max_handler);*/
 }
 
 void *control_listen(void *args)
