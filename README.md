@@ -2,9 +2,8 @@ drone_simulator
 ===============
 Dependencies:
 -------------
-*	FFMpeg with libx264 enabled
-*	pthreads
-*	BSD-style sockets
+* FFMpeg with libx264 enabled
+* Tested on Arch Linux and Mac OS X
 
 Installation:
 -------------
