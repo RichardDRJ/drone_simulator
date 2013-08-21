@@ -30,8 +30,8 @@ static void usage(char *pname)
             "\t-h\t\tPrint this help text.\n"\
             "\t-v\t\tGet video stream from v-rep (requires v-rep to be running).\n"\
             "\t-w <filename>\tGet video stream from camera specified by filename. If no filename specified, defaults to /dev/video0.\n"\
-            "\t-c {vrep|print}\t\tUse the specified method to deal with control commands.\n",
-            "\t-n {vrep}\t\tUse the specified source of navigation data. Right now, only v-rep is supported.\n",
+            "\t-c {vrep|print}\tUse the specified method to deal with control commands.\n"\
+            "\t-n {vrep}\tUse the specified source of navigation data. Right now, only v-rep is supported.\n",
             pname);
 }
 
