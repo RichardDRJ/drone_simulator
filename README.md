@@ -22,3 +22,7 @@ Usage:
 		-n {vrep}	Use the specified source of navigation data. Right now, only v-rep is supported.
 		
 * To use with v-rep, you must ensure that v-rep is running on the same computer as the server software (it can work on a different computer if you change the IP address in the source code. However, it does not work reliably). Then, open the dronescene.ttt file from the vrep_drone_scripts folder and run the simulation.
+
+Adding modules:
+---------------
+The system is created to be easily extendable. In order to handle a specific situation differently (e.g. a different video source or different code for handling control signals), all that is needed is the addition of an init function which needs to be called in main() when command line arguments are being parsed and the relevant handler function, to which a pointer is added to the data_options struct in your init function.

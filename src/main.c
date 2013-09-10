@@ -45,14 +45,22 @@ int main(int argc, char **argv)
     uint8_t navdata_specified = 0;
     uint8_t control_specified = 0;
     uint8_t vrep_init = 0;
+    uint32_t vrep_port = 20000;
+    char vrep_ip[16] = "127.0.0.1";
     simxInt vrep_client_id;
 
     int c;
 
-    while ((c = getopt (argc, argv, "n:c:vw::h")) != -1)
+    while ((c = getopt (argc, argv, "n:c:vw::hp:i:")) != -1)
     {
         switch (c)
         {
+            case 'p':
+                vrep_port = atol(optarg);
+                break;
+            case 'i':
+                strncpy(vrep_ip, optarg, sizeof(vrep_ip));
+                break;
             case 'v':
                 if(video_specified)
                 {
@@ -62,7 +70,7 @@ int main(int argc, char **argv)
 
                 if(!vrep_init)
                 {
-                    vrep_client_id = simxStart("127.0.0.1", 20000, 1, 1, 2000, 5);
+                    vrep_client_id = simxStart(vrep_ip, vrep_port, 1, 1, 2000, 5);
                     if(vrep_client_id == -1)
                         error("Could not connect to vrep");
 
@@ -112,7 +120,7 @@ int main(int argc, char **argv)
                 {
                     if(!vrep_init)
                     {
-                        vrep_client_id = simxStart("127.0.0.1", 20000, 1, 1, 2000, 5);
+                        vrep_client_id = simxStart(vrep_ip, vrep_port, 1, 1, 2000, 5);
                         if(vrep_client_id == -1)
                             error("Could not connect to vrep");
 
